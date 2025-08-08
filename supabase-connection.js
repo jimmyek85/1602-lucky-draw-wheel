@@ -31,14 +31,14 @@ class SupabaseConnectionManager {
         try {
             console.log('🔗 初始化 Supabase 连接管理器...');
             
-            if (!this.config.SUPABASE_URL || !this.config.SUPABASE_ANON_KEY) {
+            if (!this.config.url || !this.config.anonKey) {
                 throw new Error('Supabase 配置缺失');
             }
 
             // 创建优化的 Supabase 客户端
             this.supabase = window.supabase.createClient(
-                this.config.SUPABASE_URL,
-                this.config.SUPABASE_ANON_KEY,
+                this.config.url,
+                this.config.anonKey,
                 {
                     auth: {
                         autoRefreshToken: true,

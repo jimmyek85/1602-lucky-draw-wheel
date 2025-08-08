@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据库表结构检查</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .table-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .column-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .column-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        
+        .column-name {
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .column-type {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 数据库表结构检查工具</h1>
+        
+        <div class="status info">
+            <strong>功能说明：</strong>检查 Supabase 数据库中 users 表的实际结构，确认所有列是否存在。
+        </div>
+        
+        <button id="checkBtn" class="btn" onclick="checkTableStructure()">检查表结构</button>
+        <button id="createMissingBtn" class="btn" onclick="createMissingColumns()">创建缺失的列</button>
+        
+        <div id="status" class="status info hidden"></div>
+        
+        <div id="tableInfo" class="table-info hidden">
+            <h3>Users 表结构</h3>
+            <div id="columnList" class="column-list"></div>
+        </div>
+        
+        <div id="missingColumns" class="table-info hidden"></div>
+            <h3>❌ 缺失的列</h3>
+            <div id="missingList"></div>
+        </div>
+    </div>
+    
+    <script src="supabase-config.js"></script>
+    <script>
+        let supabase;
+        let missingColumnsList = [];
+        
+        // 初始化 Supabase
+        async function initSupabase() {
+            if (!window.supabase || !SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
+                throw new Error('Supabase 配置不完整');
+            }
+            
+            supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+            return supabase;
+        }
+        
+        // 检查表结构
+        async function checkTableStructure() {
+            const checkBtn = document.getElementById('checkBtn');
+            const status = document.getElementById('status');
+            const tableInfo = document.getElementById('tableInfo');
+            const missingColumns = document.getElementById('missingColumns');
+            const createMissingBtn = document.getElementById('createMissingBtn');
+            
+            checkBtn.disabled = true;
+            status.style.display = 'block';
+            status.className = 'status info';
+            status.innerHTML = '🔄 正在检查表结构... <span class="loading"></span>';
+            
+            try {
+                await initSupabase();
+                
+                // 尝试查询表结构
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .limit(1);
+                
+                if (error) {
+                    throw new Error(`查询失败: ${error.message}`);
+                }
+                
+                // 获取列信息（通过查询一条记录来推断结构）
+                const columns = data && data.length > 0 ? Object.keys(data[0]) : [];
+                
+                // 期望的列
+                const expectedColumns = [
+                    'id', 'name', 'phone', 'email', 'address',
+                    'drawchances', 'participation_count', 'joindate',
+                    'last_participation', 'prizeswon', 'created_at',
+                    'updated_at', 'status', 'notes', 'referral_code', 'referred_by'
+                ];
+                
+                // 检查缺失的列
+                missingColumnsList = expectedColumns.filter(col => !columns.includes(col));
+                
+                // 显示结果
+                displayTableStructure(columns);
+                
+                if (missingColumnsList.length > 0) {
+                    displayMissingColumns(missingColumnsList);
+                    createMissingBtn.style.display = 'inline-block';
+                    status.className = 'status error';
+                    status.textContent = `❌ 发现 ${missingColumnsList.length} 个缺失的列`;
+                } else {
+                    missingColumns.style.display = 'none';
+                    createMissingBtn.style.display = 'none';
+                    status.className = 'status success';
+                    status.textContent = '✅ 表结构完整，所有列都存在';
+                }
+                
+            } catch (error) {
+                console.error('检查表结构失败:', error);
+                status.className = 'status error';
+                status.textContent = `❌ 检查失败: ${error.message}`;
+            } finally {
+                checkBtn.disabled = false;
+            }
+        }
+        
+        // 显示表结构
+        function displayTableStructure(columns) {
+            const tableInfo = document.getElementById('tableInfo');
+            const columnList = document.getElementById('columnList');
+            
+            columnList.innerHTML = columns.map(column => `
+                <div class="column-item">
+                    <div class="column-name">✅ ${column}</div>
+                    <div class="column-type">存在</div>
+                </div>
+            `).join('');
+            
+            tableInfo.style.display = 'block';
+        }
+        
+        // 显示缺失的列
+        function displayMissingColumns(missing) {
+            const missingColumns = document.getElementById('missingColumns');
+            const missingList = document.getElementById('missingList');
+            
+            missingList.innerHTML = missing.map(column => `
+                <div class="column-item">
+                    <div class="column-name">❌ ${column}</div>
+                    <div class="column-type">缺失</div>
+                </div>
+            `).join('');
+            
+            missingColumns.style.display = 'block';
+        }
+        
+        // 创建缺失的列（需要管理员权限）
+        async function createMissingColumns() {
+            const createMissingBtn = document.getElementById('createMissingBtn');
+            const status = document.getElementById('status');
+            
+            createMissingBtn.disabled = true;
+            status.className = 'status info';
+            status.innerHTML = '🔄 正在创建缺失的列... <span class="loading"></span>';
+            
+            try {
+                // 这里需要使用 SQL 来添加列，但通常需要管理员权限
+                status.className = 'status error';
+                status.innerHTML = `
+                    ❌ 无法自动创建列，需要管理员权限。<br>
+                    请在 Supabase Dashboard > SQL Editor 中执行以下 SQL：<br><br>
+                    <code style="background: #f8f9fa; padding: 10px; display: block; margin: 10px 0;">
+                        ${generateCreateColumnSQL()}
+                    </code>
+                `;
+                
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = `❌ 创建失败: ${error.message}`;
+            } finally {
+                createMissingBtn.disabled = false;
+            }
+        }
+        
+        // 生成创建列的 SQL
+        function generateCreateColumnSQL() {
+            const columnDefinitions = {
+                'joindate': 'ALTER TABLE users ADD COLUMN joindate TIMESTAMPTZ DEFAULT NOW();',
+                'participation_count': 'ALTER TABLE users ADD COLUMN participation_count INTEGER DEFAULT 1;',
+                'last_participation': 'ALTER TABLE users ADD COLUMN last_participation TIMESTAMPTZ DEFAULT NOW();',
+                'drawchances': 'ALTER TABLE users ADD COLUMN drawchances INTEGER DEFAULT 1;',
+                'prizeswon': 'ALTER TABLE users ADD COLUMN prizeswon JSONB DEFAULT \'[]\';',
+                'status': 'ALTER TABLE users ADD COLUMN status TEXT DEFAULT \'active\';',
+                'notes': 'ALTER TABLE users ADD COLUMN notes TEXT;',
+                'referral_code': 'ALTER TABLE users ADD COLUMN referral_code TEXT;',
+                'referred_by': 'ALTER TABLE users ADD COLUMN referred_by TEXT;',
+                'created_at': 'ALTER TABLE users ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW();',
+                'updated_at': 'ALTER TABLE users ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();'
+            };
+            
+            return missingColumnsList
+                .map(col => columnDefinitions[col] || `-- 未知列: ${col}`)
+                .join('\n');
+        }
+        
+        // 页面加载时检查配置
+        window.addEventListener('load', function() {
+            if (!SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
+                document.getElementById('status').style.display = 'block';
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').textContent = '❌ Supabase 配置不完整，请先配置数据库连接';
+                document.getElementById('checkBtn').disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>

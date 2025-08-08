@@ -1,0 +1,37 @@
+{
+  "name": "1602-lucky-draw-wheel",
+  "version": "1.0.0",
+  "description": "1602抽奖转盘 - 基于Supabase的在线抽奖系统",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000",
+    "build": "echo 'No build process needed for static site'",
+    "deploy": "echo 'Ready for deployment'"
+  },
+  "keywords": [
+    "lucky-draw",
+    "wheel",
+    "supabase",
+    "lottery",
+    "抽奖",
+    "转盘"
+  ],
+  "author": "Jimmy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/1602-lucky-draw-wheel.git"
+  },
+  "homepage": "https://your-username.github.io/1602-lucky-draw-wheel",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {},
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

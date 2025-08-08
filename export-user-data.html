@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户数据导出工具</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        button:disabled { background: #6c757d; cursor: not-allowed; transform: none; }
+        
+        .export-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+        .clear-btn { background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%); }
+        
+        .config-display {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .data-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+        .data-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 用户数据导出工具</h1>
+            <p>从 Supabase 数据库导出所有参与项目的用户数据</p>
+        </div>
+        
+        <div id="configStatus" class="status info">🔄 正在检查配置...</div>
+        
+        <div class="config-display" id="configDisplay">检查中...</div>
+        
+        <div class="controls">
+            <button onclick="checkConfig()" id="checkBtn">
+                🔍 检查配置
+            </button>
+            <button onclick="loadUserData()" id="loadBtn" disabled>
+                <span class="loading hidden" id="loadingSpinner"></span>
+                📥 加载用户数据
+            </button>
+            <button onclick="exportToCSV()" class="export-btn" id="exportCSVBtn" disabled>
+                📄 导出 CSV
+            </button>
+            <button onclick="exportToJSON()" class="export-btn" id="exportJSONBtn" disabled>
+                📋 导出 JSON
+            </button>
+            <button onclick="generateReport()" class="export-btn" id="reportBtn" disabled>
+                📋 生成报告
+            </button>
+        </div>
+        
+        <div id="statsContainer" class="hidden">
+            <h3>📈 数据统计</h3>
+            <div class="stats-grid" id="statsGrid"></div>
+        </div>
+        
+        <div id="dataContainer" class="hidden">
+            <h3>👥 用户数据列表</h3>
+            <div class="table-container">
+                <table class="data-table" id="userTable">
+                    <thead id="tableHeader"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="reportContainer" class="hidden">
+            <h3>📋 数据报告</h3>
+            <div id="reportContent"></div>
+        </div>
+    </div>
+
+    <script src="supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        let supabase;
+        let userData = [];
+        
+        // 检查配置
+        function checkConfig() {
+            const configDisplay = document.getElementById('configDisplay');
+            const configStatus = document.getElementById('configStatus');
+            
+            console.log('🔍 开始检查配置...');
+            
+            // 检查基本变量
+            const checks = {
+                'SUPABASE_CONFIG': typeof SUPABASE_CONFIG,
+                'window.supabase': typeof window.supabase,
+                'isSupabaseConfigured函数': typeof isSupabaseConfigured
+            };
+            
+            let configInfo = '配置检查结果:\n';
+            for (const [key, value] of Object.entries(checks)) {
+                configInfo += `${key}: ${value}\n`;
+            }
+            
+            if (typeof SUPABASE_CONFIG !== 'undefined') {
+                configInfo += `\nSupabase 配置详情:\n`;
+                configInfo += `URL: ${SUPABASE_CONFIG.url || '未设置'}\n`;
+                configInfo += `anonKey: ${SUPABASE_CONFIG.anonKey ? SUPABASE_CONFIG.anonKey.substring(0, 30) + '...' : '未设置'}\n`;
+                
+                if (typeof isSupabaseConfigured === 'function') {
+                    configInfo += `配置验证: ${isSupabaseConfigured() ? '✅ 通过' : '❌ 失败'}\n`;
+                }
+            }
+            
+            configDisplay.textContent = configInfo;
+            
+            // 尝试初始化 Supabase
+            if (typeof SUPABASE_CONFIG !== 'undefined' && 
+                SUPABASE_CONFIG.url && 
+                SUPABASE_CONFIG.anonKey && 
+                typeof window.supabase !== 'undefined') {
+                
+                try {
+                    console.log('🔄 尝试初始化 Supabase 客户端...');
+                    supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+                    
+                    configStatus.className = 'status success';
+                    configStatus.textContent = '✅ 配置检查通过，可以开始加载数据';
+                    document.getElementById('loadBtn').disabled = false;
+                    
+                } catch (error) {
+                    console.error('❌ Supabase 初始化失败:', error);
+                    configStatus.className = 'status error';
+                    configStatus.textContent = `❌ Supabase 初始化失败: ${error.message}`;
+                }
+            } else {
+                configStatus.className = 'status warning';
+                configStatus.textContent = '⚠️ 配置不完整，请检查 Supabase 配置';
+            }
+        }
+        
+        // 加载用户数据
+        async function loadUserData() {
+            const loadBtn = document.getElementById('loadBtn');
+            const spinner = document.getElementById('loadingSpinner');
+            const configStatus = document.getElementById('configStatus');
+            
+            if (!supabase) {
+                alert('请先检查配置');
+                return;
+            }
+            
+            loadBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            configStatus.className = 'status info';
+            configStatus.textContent = '🔄 正在加载用户数据...';
+            
+            try {
+                // 获取所有用户数据
+                const { data: users, error: usersError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .order('joindate', { ascending: false });
+                
+                if (usersError) {
+                    throw new Error(`查询用户数据失败: ${usersError.message}`);
+                }
+                
+                userData = users || [];
+                
+                // 显示统计信息
+                displayStats();
+                
+                // 显示数据表格
+                displayUserTable();
+                
+                // 启用导出按钮
+                document.getElementById('exportCSVBtn').disabled = false;
+                document.getElementById('exportJSONBtn').disabled = false;
+                document.getElementById('reportBtn').disabled = false;
+                
+                configStatus.className = 'status success';
+                configStatus.textContent = `✅ 成功加载 ${userData.length} 条用户数据`;
+                
+            } catch (error) {
+                console.error('加载用户数据失败:', error);
+                configStatus.className = 'status error';
+                configStatus.textContent = `❌ 加载失败: ${error.message}`;
+            } finally {
+                loadBtn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        }
+        
+        // 显示统计信息
+        function displayStats() {
+            const statsContainer = document.getElementById('statsContainer');
+            const statsGrid = document.getElementById('statsGrid');
+            
+            if (userData.length === 0) {
+                statsContainer.style.display = 'none';
+                return;
+            }
+            
+            // 计算统计数据
+            const totalUsers = userData.length;
+            const activeUsers = userData.filter(user => (user.participationcount || 0) > 0).length;
+            const winnersCount = userData.filter(user => user.prizeswon && user.prizeswon.length > 0).length;
+            const totalParticipations = userData.reduce((sum, user) => sum + (user.participationcount || 0), 0);
+            
+            // 最近注册用户（7天内）
+            const recentUsers = userData.filter(user => {
+                if (!user.joindate) return false;
+                const joinDate = new Date(user.joindate);
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return joinDate > weekAgo;
+            }).length;
+            
+            const stats = [
+                { number: totalUsers, label: '总用户数' },
+                { number: activeUsers, label: '活跃用户' },
+                { number: winnersCount, label: '中奖用户' },
+                { number: totalParticipations, label: '总参与次数' },
+                { number: recentUsers, label: '本周新用户' },
+                { number: totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) + '%' : '0%', label: '活跃率' }
+            ];
+            
+            statsGrid.innerHTML = stats.map(stat => `
+                <div class="stat-card">
+                    <div class="stat-number">${stat.number}</div>
+                    <div class="stat-label">${stat.label}</div>
+                </div>
+            `).join('');
+            
+            statsContainer.style.display = 'block';
+        }
+        
+        // 显示用户表格
+        function displayUserTable() {
+            const dataContainer = document.getElementById('dataContainer');
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            
+            if (userData.length === 0) {
+                dataContainer.style.display = 'none';
+                return;
+            }
+            
+            // 表头
+            const headers = [
+                '用户ID', '姓名', '手机号', '邮箱', '注册时间', 
+                '参与次数', '中奖记录', '最后活动', '状态'
+            ];
+            
+            tableHeader.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+            
+            // 表格内容（只显示前20条）
+            const displayData = userData.slice(0, 20);
+            tableBody.innerHTML = displayData.map(user => {
+                const joinDate = user.joindate ? new Date(user.joindate).toLocaleString('zh-CN') : '未知';
+                const lastActivity = user.lastactivity ? new Date(user.lastactivity).toLocaleString('zh-CN') : '无';
+                const prizes = user.prizeswon ? (Array.isArray(user.prizeswon) ? user.prizeswon.join(', ') : user.prizeswon) : '无';
+                const status = (user.participationcount || 0) > 0 ? '活跃' : '未参与';
+                
+                return `
+                    <tr>
+                        <td>${user.id || ''}</td>
+                        <td>${user.name || ''}</td>
+                        <td>${user.phone || ''}</td>
+                        <td>${user.email || ''}</td>
+                        <td>${joinDate}</td>
+                        <td>${user.participationcount || 0}</td>
+                        <td>${prizes}</td>
+                        <td>${lastActivity}</td>
+                        <td><span style="color: ${status === '活跃' ? '#28a745' : '#6c757d'}">${status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+            
+            if (userData.length > 20) {
+                tableBody.innerHTML += `<tr><td colspan="9" style="text-align: center; color: #6c757d; font-style: italic;">显示前20条记录，共${userData.length}条记录</td></tr>`;
+            }
+            
+            dataContainer.style.display = 'block';
+        }
+        
+        // 导出为 CSV
+        function exportToCSV() {
+            if (userData.length === 0) {
+                alert('没有数据可导出');
+                return;
+            }
+            
+            try {
+                const headers = ['用户ID', '姓名', '手机号', '邮箱', '注册时间', '参与次数', '中奖记录', '最后活动', '状态'];
+                const csvData = userData.map(user => {
+                    const joinDate = user.joindate ? new Date(user.joindate).toLocaleString('zh-CN') : '未知';
+                    const lastActivity = user.lastactivity ? new Date(user.lastactivity).toLocaleString('zh-CN') : '无';
+                    const prizes = user.prizeswon ? (Array.isArray(user.prizeswon) ? user.prizeswon.join('; ') : user.prizeswon) : '无';
+                    const status = (user.participationcount || 0) > 0 ? '活跃' : '未参与';
+                    
+                    return [
+                        user.id || '',
+                        user.name || '',
+                        user.phone || '',
+                        user.email || '',
+                        joinDate,
+                        user.participationcount || 0,
+                        prizes,
+                        lastActivity,
+                        status
+                    ].map(field => `"${field}"`).join(',');
+                });
+                
+                const csvContent = [headers.join(','), ...csvData].join('\n');
+                const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `用户数据导出_${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+                
+                alert(`成功导出 ${userData.length} 条记录为 CSV 格式`);
+            } catch (error) {
+                alert(`CSV导出失败: ${error.message}`);
+            }
+        }
+        
+        // 导出为 JSON
+        function exportToJSON() {
+            if (userData.length === 0) {
+                alert('没有数据可导出');
+                return;
+            }
+            
+            try {
+                const exportData = {
+                    exportInfo: {
+                        exportTime: new Date().toISOString(),
+                        totalRecords: userData.length,
+                        exportedBy: '用户数据导出工具'
+                    },
+                    statistics: {
+                        totalUsers: userData.length,
+                        activeUsers: userData.filter(user => (user.participationcount || 0) > 0).length,
+                        winnersCount: userData.filter(user => user.prizeswon && user.prizeswon.length > 0).length,
+                        totalParticipations: userData.reduce((sum, user) => sum + (user.participationcount || 0), 0)
+                    },
+                    userData: userData
+                };
+                
+                const jsonContent = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([jsonContent], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `用户数据导出_${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                
+                alert(`成功导出 ${userData.length} 条记录为 JSON 格式`);
+            } catch (error) {
+                alert(`JSON导出失败: ${error.message}`);
+            }
+        }
+        
+        // 生成报告
+        function generateReport() {
+            if (userData.length === 0) {
+                alert('没有数据可生成报告');
+                return;
+            }
+            
+            const reportContainer = document.getElementById('reportContainer');
+            const reportContent = document.getElementById('reportContent');
+            
+            // 计算详细统计
+            const totalUsers = userData.length;
+            const activeUsers = userData.filter(user => (user.participationcount || 0) > 0).length;
+            const winnersCount = userData.filter(user => user.prizeswon && user.prizeswon.length > 0).length;
+            const totalParticipations = userData.reduce((sum, user) => sum + (user.participationcount || 0), 0);
+            
+            // 按注册时间分组
+            const registrationByMonth = {};
+            userData.forEach(user => {
+                if (user.joindate) {
+                    const month = new Date(user.joindate).toISOString().substring(0, 7);
+                    registrationByMonth[month] = (registrationByMonth[month] || 0) + 1;
+                }
+            });
+            
+            // 生成报告HTML
+            const reportHTML = `
+                <div class="status info">
+                    <h4>📊 用户数据分析报告</h4>
+                    <p><strong>生成时间:</strong> ${new Date().toLocaleString('zh-CN')}</p>
+                    <p><strong>数据来源:</strong> Supabase 数据库</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h4>📈 总体统计</h4>
+                    <ul>
+                        <li><strong>总用户数:</strong> ${totalUsers} 人</li>
+                        <li><strong>活跃用户:</strong> ${activeUsers} 人 (${totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0}%)</li>
+                        <li><strong>中奖用户:</strong> ${winnersCount} 人 (${totalUsers > 0 ? Math.round((winnersCount / totalUsers) * 100) : 0}%)</li>
+                        <li><strong>总参与次数:</strong> ${totalParticipations} 次</li>
+                        <li><strong>平均参与次数:</strong> ${activeUsers > 0 ? Math.round(totalParticipations / activeUsers * 100) / 100 : 0} 次/人</li>
+                    </ul>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h4>📅 注册趋势</h4>
+                    <ul>
+                        ${Object.entries(registrationByMonth)
+                            .sort(([a], [b]) => b.localeCompare(a))
+                            .slice(0, 6)
+                            .map(([month, count]) => `<li><strong>${month}:</strong> ${count} 人注册</li>`)
+                            .join('')}
+                    </ul>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h4>🏆 活跃度分析</h4>
+                    <ul>
+                        <li><strong>高活跃用户 (参与5次以上):</strong> ${userData.filter(u => (u.participationcount || 0) >= 5).length} 人</li>
+                        <li><strong>中等活跃用户 (参与2-4次):</strong> ${userData.filter(u => (u.participationcount || 0) >= 2 && (u.participationcount || 0) < 5).length} 人</li>
+                        <li><strong>低活跃用户 (参与1次):</strong> ${userData.filter(u => (u.participationcount || 0) === 1).length} 人</li>
+                        <li><strong>未参与用户:</strong> ${userData.filter(u => (u.participationcount || 0) === 0).length} 人</li>
+                    </ul>
+                </div>
+                
+                <div class="controls">
+                    <button onclick="downloadReport()" class="export-btn">📄 下载报告</button>
+                </div>
+            `;
+            
+            reportContent.innerHTML = reportHTML;
+            reportContainer.style.display = 'block';
+        }
+        
+        // 下载报告
+        function downloadReport() {
+            const reportContent = document.getElementById('reportContent').innerHTML;
+            const fullReport = `
+                <!DOCTYPE html>
+                <html lang="zh-CN">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>用户数据分析报告</title>
+                    <style>
+                        body { font-family: 'Microsoft YaHei', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                        .status { padding: 15px; margin: 15px 0; border-radius: 8px; }
+                        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+                        h4 { margin-top: 0; }
+                        ul { padding-left: 20px; }
+                        li { margin: 8px 0; }
+                    </style>
+                </head>
+                <body>
+                    ${reportContent.replace(/<button[^>]*>.*?<\/button>/g, '')}
+                </body>
+                </html>
+            `;
+            
+            const blob = new Blob([fullReport], { type: 'text/html' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `用户数据分析报告_${new Date().toISOString().split('T')[0]}.html`;
+            link.click();
+        }
+        
+        // 页面加载时自动检查配置
+        window.addEventListener('load', checkConfig);
+    </script>
+</body>
+</html>

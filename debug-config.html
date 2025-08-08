@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置调试</title>
+</head>
+<body>
+    <h1>配置调试页面</h1>
+    <div id="output"></div>
+    
+    <script src="supabase-config.js"></script>
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            output.innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        log('=== 配置调试开始 ===');
+        log('typeof SUPABASE_CONFIG: ' + typeof SUPABASE_CONFIG);
+        
+        if (typeof SUPABASE_CONFIG !== 'undefined') {
+            log('SUPABASE_CONFIG.url: ' + SUPABASE_CONFIG.url);
+            log('SUPABASE_CONFIG.anonKey 长度: ' + (SUPABASE_CONFIG.anonKey ? SUPABASE_CONFIG.anonKey.length : 'undefined'));
+            log('URL 类型: ' + typeof SUPABASE_CONFIG.url);
+            log('anonKey 类型: ' + typeof SUPABASE_CONFIG.anonKey);
+            log('URL 值: "' + SUPABASE_CONFIG.url + '"');
+            log('anonKey 前20字符: "' + (SUPABASE_CONFIG.anonKey ? SUPABASE_CONFIG.anonKey.substring(0, 20) : 'undefined') + '"');
+            
+            // 检查是否有隐藏字符
+            if (SUPABASE_CONFIG.url) {
+                log('URL 字符码: ' + Array.from(SUPABASE_CONFIG.url).map(c => c.charCodeAt(0)).join(','));
+            }
+            
+            if (typeof isSupabaseConfigured === 'function') {
+                log('isSupabaseConfigured(): ' + isSupabaseConfigured());
+            } else {
+                log('isSupabaseConfigured 函数未定义');
+            }
+        } else {
+            log('SUPABASE_CONFIG 未定义');
+        }
+        
+        log('=== 配置调试结束 ===');
+    </script>
+</body>
+</html>

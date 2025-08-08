@@ -3,11 +3,8 @@
 // 您可以从 Supabase Dashboard 获取这些信息: https://app.supabase.com/
 
 const SUPABASE_CONFIG = {
-    // Supabase 项目 URL
-    SUPABASE_URL: 'https://ibirsieaeozhsvleegri.supabase.co',
-    
-    // Supabase anon 公钥
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliaXJzaWVhZW96aHN2bGVlZ3JpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4OTQ5MzIsImV4cCI6MjA2OTQ3MDkzMn0.MYzEhk1XYS9d4n-ToLZIb4AsUjzoiOndNeIqdDdY0SM',
+    url: 'https://rlwuwjegxgtsdshnhyrr.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsd3V3amVneGd0c2RzaG5oeXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NzA0NzAsImV4cCI6MjA3MDE0NjQ3MH0.4m5iS5wGtMfNiWTfX4j8PtKyP0IUYJztVtFE4xGsXLk',
     
     // 数据库表名配置
     TABLES: {
@@ -29,12 +26,12 @@ const SUPABASE_CONFIG = {
 
 // 检查 Supabase 配置是否已设置
 function isSupabaseConfigured() {
-    return SUPABASE_CONFIG.SUPABASE_URL && 
-           SUPABASE_CONFIG.SUPABASE_URL !== 'https://your-project-id.supabase.co' && 
-           SUPABASE_CONFIG.SUPABASE_ANON_KEY && 
-           SUPABASE_CONFIG.SUPABASE_ANON_KEY !== 'your-supabase-anon-key-here' &&
-           SUPABASE_CONFIG.SUPABASE_URL.includes('.supabase.co') &&
-           SUPABASE_CONFIG.SUPABASE_ANON_KEY.startsWith('eyJ');
+    return SUPABASE_CONFIG.url && 
+           SUPABASE_CONFIG.url !== 'https://your-project-id.supabase.co' && 
+           SUPABASE_CONFIG.anonKey && 
+           SUPABASE_CONFIG.anonKey !== 'your-supabase-anon-key-here' &&
+           SUPABASE_CONFIG.url.includes('.supabase.co') &&
+           SUPABASE_CONFIG.anonKey.startsWith('eyJ');
 }
 
 // 验证 Supabase URL 格式

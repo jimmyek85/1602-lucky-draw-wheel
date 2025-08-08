@@ -190,8 +190,8 @@
         let supabase;
         try {
             supabase = window.supabase.createClient(
-                window.SUPABASE_CONFIG?.SUPABASE_URL || 'https://your-project-id.supabase.co',
-                window.SUPABASE_CONFIG?.SUPABASE_ANON_KEY || 'your-supabase-anon-key-here'
+                window.SUPABASE_CONFIG?.url || 'https://your-project-id.supabase.co',
+                window.SUPABASE_CONFIG?.anonKey || 'your-supabase-anon-key-here'
             );
         } catch (error) {
             console.error('Failed to initialize Supabase client:', error);
