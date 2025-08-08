@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部署准备检查器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .check-item { transition: all 0.3s ease; }
+        .check-pass { background-color: #dcfce7; border-color: #16a34a; }
+        .check-fail { background-color: #fef2f2; border-color: #dc2626; }
+        .check-pending { background-color: #fef3c7; border-color: #d97706; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- 标题 -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">🚀 Netlify 部署准备检查器</h1>
+                <p class="text-gray-600">检查您的项目是否已准备好部署到 Netlify</p>
+            </div>
+
+            <!-- 检查结果概览 -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">📊 检查概览</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="text-center p-4 bg-green-50 rounded-lg">
+                        <div class="text-2xl font-bold text-green-600" id="passCount">0</div>
+                        <div class="text-sm text-green-700">通过检查</div>
+                    </div>
+                    <div class="text-center p-4 bg-red-50 rounded-lg">
+                        <div class="text-2xl font-bold text-red-600" id="failCount">0</div>
+                        <div class="text-sm text-red-700">未通过检查</div>
+                    </div>
+                    <div class="text-center p-4 bg-yellow-50 rounded-lg">
+                        <div class="text-2xl font-bold text-yellow-600" id="pendingCount">0</div>
+                        <div class="text-sm text-yellow-700">待检查</div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-green-600 h-2 rounded-full transition-all duration-500 w-0" id="progressBar"></div>
+                    </div>
+                    <div class="text-center mt-2 text-sm text-gray-600" id="progressText">准备开始检查...</div>
+                </div>
+            </div>
+
+            <!-- 检查项目 -->
+            <div class="space-y-4">
+                <!-- 核心文件检查 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold mb-4">📁 核心文件检查</h3>
+                    <div class="space-y-2" id="fileChecks">
+                        <!-- 动态生成检查项 -->
+                    </div>
+                </div>
+
+                <!-- 配置检查 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold mb-4">⚙️ 配置检查</h3>
+                    <div class="space-y-2" id="configChecks">
+                        <!-- 动态生成检查项 -->
+                    </div>
+                </div>
+
+                <!-- 功能检查 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold mb-4">🔧 功能检查</h3>
+                    <div class="space-y-2" id="functionChecks">
+                        <!-- 动态生成检查项 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 部署指南 -->
+            <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+                <h3 class="text-lg font-semibold mb-4">📋 部署步骤</h3>
+                <div class="space-y-4">
+                    <div class="border-l-4 border-blue-500 pl-4">
+                        <h4 class="font-semibold text-blue-700">方法一：GitHub 自动部署（推荐）</h4>
+                        <ol class="list-decimal list-inside mt-2 space-y-1 text-sm text-gray-600">
+                            <li>推送代码到 GitHub: <code class="bg-gray-100 px-1 rounded">git push origin main</code></li>
+                            <li>登录 <a href="https://netlify.com" target="_blank" rel="noopener" class="text-blue-600 hover:underline">netlify.com</a></li>
+                            <li>选择 "New site from Git" → GitHub → 选择仓库</li>
+                            <li>构建设置：Branch: main, Build command: echo 'No build needed', Publish directory: .</li>
+                            <li>点击 "Deploy site"</li>
+                        </ol>
+                    </div>
+                    <div class="border-l-4 border-green-500 pl-4">
+                        <h4 class="font-semibold text-green-700">方法二：拖拽部署</h4>
+                        <ol class="list-decimal list-inside mt-2 space-y-1 text-sm text-gray-600">
+                            <li>确保所有文件在项目根目录</li>
+                            <li>登录 Netlify → "Deploy manually"</li>
+                            <li>拖拽整个项目文件夹到部署区域</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="text-center mt-8 space-x-4">
+                <button onclick="runAllChecks()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors">
+                    🔍 开始检查
+                </button>
+                <button onclick="exportReport()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors">
+                    📄 导出报告
+                </button>
+                <a href="NETLIFY_DEPLOYMENT_GUIDE.md" target="_blank" class="inline-block bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors">
+                    📖 详细指南
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 检查项目配置
+        const checkItems = {
+            files: [
+                { name: 'index.html', description: '主页面文件' },
+                { name: 'admin.html', description: '管理面板文件' },
+                { name: 'backup-dashboard.html', description: '备份管理面板' },
+                { name: 'netlify.toml', description: 'Netlify 配置文件' },
+                { name: 'package.json', description: '项目配置文件' },
+                { name: 'config.js', description: 'API 配置文件' },
+                { name: 'supabase-config.js', description: 'Supabase 配置文件' },
+                { name: 'supabase-connection.js', description: 'Supabase 连接文件' },
+                { name: 'offline-storage-manager.js', description: '离线存储管理器' },
+                { name: 'github-backup-manager.js', description: 'GitHub 备份管理器' }
+            ],
+            configs: [
+                { name: 'supabase-url', description: 'Supabase URL 配置', check: () => checkSupabaseConfig() },
+                { name: 'supabase-key', description: 'Supabase API Key 配置', check: () => checkSupabaseKey() },
+                { name: 'gemini-api', description: 'Gemini API Key 配置（可选）', check: () => checkGeminiAPI() }
+            ],
+            functions: [
+                { name: 'supabase-connection', description: 'Supabase 连接测试', check: () => testSupabaseConnection() },
+                { name: 'offline-storage', description: '离线存储功能', check: () => testOfflineStorage() },
+                { name: 'backup-manager', description: '备份管理功能', check: () => testBackupManager() }
+            ]
+        };
+
+        let checkResults = {};
+
+        // 初始化页面
+        function initPage() {
+            renderCheckItems();
+            updateProgress();
+        }
+
+        // 渲染检查项
+        function renderCheckItems() {
+            // 文件检查
+            const fileChecksContainer = document.getElementById('fileChecks');
+            checkItems.files.forEach(item => {
+                const div = createCheckItem(item.name, item.description, 'pending');
+                fileChecksContainer.appendChild(div);
+            });
+
+            // 配置检查
+            const configChecksContainer = document.getElementById('configChecks');
+            checkItems.configs.forEach(item => {
+                const div = createCheckItem(item.name, item.description, 'pending');
+                configChecksContainer.appendChild(div);
+            });
+
+            // 功能检查
+            const functionChecksContainer = document.getElementById('functionChecks');
+            checkItems.functions.forEach(item => {
+                const div = createCheckItem(item.name, item.description, 'pending');
+                functionChecksContainer.appendChild(div);
+            });
+        }
+
+        // 创建检查项元素
+        function createCheckItem(id, description, status) {
+            const div = document.createElement('div');
+            div.id = `check-${id}`;
+            div.className = `check-item p-3 border rounded-lg flex items-center justify-between check-${status}`;
+            div.innerHTML = `
+                <div class="flex items-center">
+                    <span class="status-icon mr-3">${getStatusIcon(status)}</span>
+                    <div>
+                        <div class="font-medium">${description}</div>
+                        <div class="text-sm text-gray-500">${id}</div>
+                    </div>
+                </div>
+                <div class="status-text text-sm font-medium">${getStatusText(status)}</div>
+            `;
+            return div;
+        }
+
+        // 获取状态图标
+        function getStatusIcon(status) {
+            switch(status) {
+                case 'pass': return '✅';
+                case 'fail': return '❌';
+                case 'pending': return '⏳';
+                default: return '❓';
+            }
+        }
+
+        // 获取状态文本
+        function getStatusText(status) {
+            switch(status) {
+                case 'pass': return '通过';
+                case 'fail': return '失败';
+                case 'pending': return '待检查';
+                default: return '未知';
+            }
+        }
+
+        // 更新检查项状态
+        function updateCheckItem(id, status, message = '') {
+            const element = document.getElementById(`check-${id}`);
+            if (element) {
+                element.className = `check-item p-3 border rounded-lg flex items-center justify-between check-${status}`;
+                element.querySelector('.status-icon').textContent = getStatusIcon(status);
+                element.querySelector('.status-text').textContent = message || getStatusText(status);
+                checkResults[id] = { status, message };
+                updateProgress();
+            }
+        }
+
+        // 更新进度
+        function updateProgress() {
+            const total = Object.keys(checkResults).length;
+            const passed = Object.values(checkResults).filter(r => r.status === 'pass').length;
+            const failed = Object.values(checkResults).filter(r => r.status === 'fail').length;
+            const pending = Object.values(checkResults).filter(r => r.status === 'pending').length;
+
+            document.getElementById('passCount').textContent = passed;
+            document.getElementById('failCount').textContent = failed;
+            document.getElementById('pendingCount').textContent = pending;
+
+            const progress = total > 0 ? (passed / total) * 100 : 0;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `${passed}/${total} 项检查通过 (${Math.round(progress)}%)`;
+        }
+
+        // 运行所有检查
+        async function runAllChecks() {
+            // 文件检查
+            for (const item of checkItems.files) {
+                await checkFileExists(item.name);
+                await new Promise(resolve => setTimeout(resolve, 100)); // 添加延迟以显示进度
+            }
+
+            // 配置检查
+            for (const item of checkItems.configs) {
+                try {
+                    const result = await item.check();
+                    updateCheckItem(item.name, result ? 'pass' : 'fail');
+                } catch (error) {
+                    updateCheckItem(item.name, 'fail', error.message);
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            // 功能检查
+            for (const item of checkItems.functions) {
+                try {
+                    const result = await item.check();
+                    updateCheckItem(item.name, result ? 'pass' : 'fail');
+                } catch (error) {
+                    updateCheckItem(item.name, 'fail', error.message);
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        // 检查文件是否存在
+        async function checkFileExists(filename) {
+            try {
+                const response = await fetch(filename, { method: 'HEAD' });
+                updateCheckItem(filename, response.ok ? 'pass' : 'fail');
+            } catch (error) {
+                updateCheckItem(filename, 'fail', '文件不存在');
+            }
+        }
+
+        // 检查 Supabase 配置
+        function checkSupabaseConfig() {
+            return new Promise((resolve) => {
+                if (typeof SUPABASE_CONFIG !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.url.includes('.supabase.co')) {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            });
+        }
+
+        // 检查 Supabase Key
+        function checkSupabaseKey() {
+            return new Promise((resolve) => {
+                if (typeof SUPABASE_CONFIG !== 'undefined' && SUPABASE_CONFIG.anonKey && SUPABASE_CONFIG.anonKey.startsWith('eyJ')) {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            });
+        }
+
+        // 检查 Gemini API
+        function checkGeminiAPI() {
+            return new Promise((resolve) => {
+                if (typeof API_CONFIG !== 'undefined' && API_CONFIG.GEMINI_API_KEY && API_CONFIG.GEMINI_API_KEY.startsWith('AIzaSy')) {
+                    resolve(true);
+                } else {
+                    resolve(true); // 可选项，默认通过
+                }
+            });
+        }
+
+        // 测试 Supabase 连接
+        function testSupabaseConnection() {
+            return new Promise((resolve) => {
+                if (typeof supabaseClient !== 'undefined') {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            });
+        }
+
+        // 测试离线存储
+        function testOfflineStorage() {
+            return new Promise((resolve) => {
+                if (typeof OfflineStorageManager !== 'undefined') {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            });
+        }
+
+        // 测试备份管理
+        function testBackupManager() {
+            return new Promise((resolve) => {
+                if (typeof GitHubBackupManager !== 'undefined') {
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+            });
+        }
+
+        // 导出报告
+        function exportReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                results: checkResults,
+                summary: {
+                    total: Object.keys(checkResults).length,
+                    passed: Object.values(checkResults).filter(r => r.status === 'pass').length,
+                    failed: Object.values(checkResults).filter(r => r.status === 'fail').length
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `deployment-check-report-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+
+    <!-- 加载配置文件以进行检查 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="supabase-config.js"></script>
+    <script>
+        // 防止 Supabase 连接错误影响页面加载
+        window.addEventListener('error', function(e) {
+            if (e.message.includes('supabase') || e.message.includes('Supabase')) {
+                e.preventDefault();
+                console.warn('Supabase 连接错误已忽略:', e.message);
+            }
+        });
+    </script>
+    <script src="supabase-connection.js" onerror="console.warn('Supabase 连接文件加载失败')"></script>
+    <script src="offline-storage-manager.js" onerror="console.warn('离线存储管理器加载失败')"></script>
+    <script src="github-backup-manager.js" onerror="console.warn('GitHub 备份管理器加载失败')"></script>
+</body>
+</html>

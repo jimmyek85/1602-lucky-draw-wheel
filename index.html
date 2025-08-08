@@ -255,6 +255,8 @@
     <script src="config.js"></script>
     <script src="supabase-config.js"></script>
     <script src="supabase-connection.js"></script>
+    <script src="offline-storage-manager.js"></script>
+    <script src="github-backup-manager.js"></script>
     <script src="ai-features.js"></script>
     <script src="fix-connection.js"></script>
     
@@ -624,29 +626,47 @@
             currentUser.drawchances = newChances;
             currentUser.prizeswon = updatedPrizes;
 
-            if (isOfflineMode) {
-                // 离线模式：保存到本地存储
-                localStorage.setItem('offlineUser', JSON.stringify(currentUser));
+            // 使用新的离线存储管理器更新用户数据
+            try {
+                if (window.offlineStorageManager) {
+                    await window.offlineStorageManager.updateUserData(currentUser.phone, {
+                        drawchances: newChances,
+                        prizeswon: updatedPrizes
+                    });
+                    
+                    // 记录抽奖活动以便备份
+                    if (window.githubBackupManager) {
+                        window.githubBackupManager.recordFileChange('prize_won', {
+                            action: 'prize_awarded',
+                            user: currentUser.phone,
+                            prize: prize.text,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                } else {
+                    // 回退到原有逻辑
+                    if (isOfflineMode) {
+                        localStorage.setItem('offlineUser', JSON.stringify(currentUser));
+                    } else {
+                        const { error } = await supabase
+                            .from(TABLES.USERS)
+                            .update({
+                                drawchances: newChances,
+                                prizeswon: updatedPrizes
+                            })
+                            .eq('phone', currentUser.phone);
+                        
+                        if (error) throw error;
+                    }
+                }
+                
                 updateChancesText(newChances);
                 spinBtn.disabled = newChances <= 0 || isSpinning;
-            } else {
-                // 在线模式：更新到 Supabase
-                try {
-                    const { error } = await supabase
-                        .from(TABLES.USERS)
-                        .update({
-                            drawchances: newChances,
-                            prizeswon: updatedPrizes
-                        })
-                        .eq('phone', currentUser.phone);
-                    
-                    if (error) throw error;
-                } catch (error) {
-                    console.error("Error updating user data:", error);
-                    // 如果更新失败，至少在本地更新
-                    updateChancesText(newChances);
-                    spinBtn.disabled = newChances <= 0 || isSpinning;
-                }
+            } catch (error) {
+                console.error("Error updating user data:", error);
+                // 如果更新失败，至少在本地更新
+                updateChancesText(newChances);
+                spinBtn.disabled = newChances <= 0 || isSpinning;
             }
         }
         
@@ -743,72 +763,40 @@
 
             const phone = countryCode + phoneInput;
 
-            // 首先尝试连接Supabase
+            // 使用新的离线存储管理器
             try {
-                // 测试Supabase连接
-                const { data: connectionTest, error: connectionError } = await supabase
-                    .from(TABLES.USERS)
-                    .select('count')
-                    .limit(1);
+                const newUser = {
+                    name,
+                    phone,
+                    email,
+                    address,
+                    drawchances: 1,
+                    joindate: new Date().toISOString(),
+                    prizeswon: []
+                };
+
+                // 使用离线存储管理器保存用户数据
+                const savedUser = await window.offlineStorageManager.saveUserData(newUser);
                 
-                if (connectionError && connectionError.code !== 'PGRST116') {
-                    throw new Error(`Supabase连接失败: ${connectionError.message}`);
-                }
-
-                // 连接成功，检查用户是否已存在
-                const { data: existingUser, error: fetchError } = await supabase
-                    .from(TABLES.USERS)
-                    .select('*')
-                    .eq('phone', phone)
-                    .single();
-
-                if (existingUser && !fetchError) {
-                    alert(langData[currentLang]["User already exists. Loading your data..."]);
-                    setupUserSession(existingUser);
-                    // 确保不在离线模式
-                    if (isOfflineMode) {
-                        isOfflineMode = false;
-                        const offlineNotice = document.querySelector('.fixed.top-0.bg-yellow-600');
-                        if (offlineNotice) offlineNotice.remove();
+                if (savedUser) {
+                    alert(langData[currentLang]["Registration successful!"]);
+                    setupUserSession(savedUser);
+                    
+                    // 记录文件变更以便备份
+                    if (window.githubBackupManager) {
+                        window.githubBackupManager.recordFileChange('user_registration', {
+                            action: 'user_registered',
+                            user: { name, phone, email },
+                            timestamp: new Date().toISOString()
+                        });
                     }
                 } else {
-                    // 创建新用户
-                    const newUser = {
-                        name,
-                        phone,
-                        email,
-                        address,
-                        drawchances: 1,
-                        joindate: new Date().toISOString(),
-                        prizeswon: []
-                    };
-                    
-                    const { data, error } = await supabase
-                        .from(TABLES.USERS)
-                        .insert([newUser])
-                        .select()
-                        .single();
-                    
-                    if (error) {
-                        console.error("用户插入错误:", error);
-                        throw new Error(`用户注册失败: ${error.message}`);
-                    }
-                    
-                    alert(langData[currentLang]["Registration successful!"]);
-                    setupUserSession(data);
-                    
-                    // 确保不在离线模式
-                    if (isOfflineMode) {
-                        isOfflineMode = false;
-                        const offlineNotice = document.querySelector('.fixed.top-0.bg-yellow-600');
-                        if (offlineNotice) offlineNotice.remove();
-                    }
+                    throw new Error('Failed to save user data');
                 }
             } catch (error) {
                 console.error("注册过程中发生错误:", error);
-                console.log("启用离线模式...");
                 
-                // Supabase连接失败，启用离线模式
+                // 回退到原有的离线模式
                 if (!isOfflineMode) {
                     enableOfflineMode();
                 }
@@ -1026,6 +1014,20 @@
                 document.querySelectorAll('.beer-flavor-btn').forEach(btn => {
                     btn.addEventListener('click', () => handleBeerRecommendation(btn.dataset.flavor));
                 });
+
+                // 初始化新的存储管理器
+                if (window.OfflineStorageManager) {
+                    window.offlineStorageManager = new window.OfflineStorageManager();
+                    await window.offlineStorageManager.init();
+                    console.log('离线存储管理器初始化成功');
+                }
+                
+                // 初始化GitHub备份管理器
+                if (window.GitHubBackupManager) {
+                    window.githubBackupManager = new window.GitHubBackupManager();
+                    await window.githubBackupManager.init();
+                    console.log('GitHub备份管理器初始化成功');
+                }
 
                 // 检查本地存储的离线用户数据
                 const savedOfflineUser = localStorage.getItem('offlineUser');

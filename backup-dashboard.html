@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1602 Lucky Draw - 数据备份管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-online { color: #10b981; }
+        .status-offline { color: #ef4444; }
+        .status-syncing { color: #f59e0b; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">1602 Lucky Draw - 数据备份管理</h1>
+            
+            <!-- 系统状态 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-blue-800 mb-2">连接状态</h3>
+                    <div id="connection-status" class="text-2xl font-bold status-offline">离线</div>
+                    <div id="connection-details" class="text-sm text-gray-600 mt-1">检查中...</div>
+                </div>
+                
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-green-800 mb-2">用户数据</h3>
+                    <div id="user-count" class="text-2xl font-bold text-green-600">0</div>
+                    <div class="text-sm text-gray-600 mt-1">已注册用户</div>
+                </div>
+                
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-purple-800 mb-2">备份状态</h3>
+                    <div id="backup-status" class="text-2xl font-bold text-purple-600">未知</div>
+                    <div id="last-backup" class="text-sm text-gray-600 mt-1">从未备份</div>
+                </div>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="flex flex-wrap gap-4 mb-8">
+                <button id="manual-backup-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition">
+                    手动备份
+                </button>
+                <button id="export-data-btn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">
+                    导出数据
+                </button>
+                <button id="sync-data-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg transition">
+                    同步数据
+                </button>
+                <button id="refresh-status-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition">
+                    刷新状态
+                </button>
+            </div>
+            
+            <!-- 备份历史 -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">备份历史</h3>
+                <div id="backup-history" class="space-y-2">
+                    <div class="text-gray-500">暂无备份记录</div>
+                </div>
+            </div>
+            
+            <!-- 数据统计 -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">数据统计</h3>
+                <div id="data-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="text-center">
+                        <div id="total-spins" class="text-2xl font-bold text-blue-600">0</div>
+                        <div class="text-sm text-gray-600">总抽奖次数</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="total-prizes" class="text-2xl font-bold text-green-600">0</div>
+                        <div class="text-sm text-gray-600">总中奖次数</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="pending-sync" class="text-2xl font-bold text-yellow-600">0</div>
+                        <div class="text-sm text-gray-600">待同步数据</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="storage-size" class="text-2xl font-bold text-purple-600">0KB</div>
+                        <div class="text-sm text-gray-600">存储大小</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 返回主页 -->
+            <div class="mt-8 text-center">
+                <a href="index.html" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition inline-block">
+                    返回主页
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 加载必要的脚本 -->
+    <script src="offline-storage-manager.js"></script>
+    <script src="github-backup-manager.js"></script>
+    
+    <script>
+        let storageManager = null;
+        let backupManager = null;
+        
+        async function initDashboard() {
+            try {
+                // 初始化存储管理器
+                if (window.OfflineStorageManager) {
+                    storageManager = new window.OfflineStorageManager();
+                    await storageManager.init();
+                }
+                
+                // 初始化备份管理器
+                if (window.GitHubBackupManager) {
+                    backupManager = new window.GitHubBackupManager();
+                    await backupManager.init();
+                }
+                
+                await updateDashboard();
+                
+                // 设置定时刷新
+                setInterval(updateDashboard, 30000); // 每30秒刷新一次
+            } catch (error) {
+                console.error('Dashboard initialization failed:', error);
+            }
+        }
+        
+        async function updateDashboard() {
+            try {
+                // 更新连接状态
+                const isOnline = navigator.onLine;
+                const connectionStatus = document.getElementById('connection-status');
+                const connectionDetails = document.getElementById('connection-details');
+                
+                if (isOnline) {
+                    connectionStatus.textContent = '在线';
+                    connectionStatus.className = 'text-2xl font-bold status-online';
+                    connectionDetails.textContent = '网络连接正常';
+                } else {
+                    connectionStatus.textContent = '离线';
+                    connectionStatus.className = 'text-2xl font-bold status-offline';
+                    connectionDetails.textContent = '网络连接断开';
+                }
+                
+                // 更新用户数据统计
+                if (storageManager) {
+                    const users = await storageManager.getAllUsers();
+                    document.getElementById('user-count').textContent = users.length;
+                    
+                    // 计算统计数据
+                    let totalSpins = 0;
+                    let totalPrizes = 0;
+                    
+                    users.forEach(user => {
+                        if (user.prizeswon && Array.isArray(user.prizeswon)) {
+                            totalPrizes += user.prizeswon.length;
+                        }
+                        // 假设每个用户开始有1次机会，当前机会数反映剩余
+                        totalSpins += (1 - (user.drawchances || 0)) + totalPrizes;
+                    });
+                    
+                    document.getElementById('total-spins').textContent = totalSpins;
+                    document.getElementById('total-prizes').textContent = totalPrizes;
+                    
+                    // 计算存储大小
+                    const storageSize = JSON.stringify(users).length;
+                    document.getElementById('storage-size').textContent = 
+                        storageSize > 1024 ? Math.round(storageSize / 1024) + 'KB' : storageSize + 'B';
+                }
+                
+                // 更新备份状态
+                if (backupManager) {
+                    const backupStatus = backupManager.getBackupStatus();
+                    document.getElementById('backup-status').textContent = backupStatus.isEnabled ? '已启用' : '已禁用';
+                    
+                    if (backupStatus.lastBackup) {
+                        const lastBackupDate = new Date(backupStatus.lastBackup);
+                        document.getElementById('last-backup').textContent = 
+                            '最后备份: ' + lastBackupDate.toLocaleString('zh-CN');
+                    }
+                    
+                    // 更新备份历史
+                    updateBackupHistory(backupStatus.history || []);
+                    
+                    // 更新待同步数据数量
+                    document.getElementById('pending-sync').textContent = 
+                        Object.keys(backupStatus.pendingChanges || {}).length;
+                }
+                
+            } catch (error) {
+                console.error('Dashboard update failed:', error);
+            }
+        }
+        
+        function updateBackupHistory(history) {
+            const historyContainer = document.getElementById('backup-history');
+            
+            if (history.length === 0) {
+                historyContainer.innerHTML = '<div class="text-gray-500">暂无备份记录</div>';
+                return;
+            }
+            
+            const historyHtml = history.slice(-5).reverse().map(backup => {
+                const date = new Date(backup.timestamp).toLocaleString('zh-CN');
+                const statusClass = backup.success ? 'text-green-600' : 'text-red-600';
+                const statusText = backup.success ? '成功' : '失败';
+                
+                return `
+                    <div class="flex justify-between items-center p-2 bg-white rounded border">
+                        <div>
+                            <div class="font-medium">${backup.type || '自动备份'}</div>
+                            <div class="text-sm text-gray-500">${date}</div>
+                        </div>
+                        <div class="${statusClass} font-medium">${statusText}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            historyContainer.innerHTML = historyHtml;
+        }
+        
+        // 事件监听器
+        document.getElementById('manual-backup-btn').addEventListener('click', async () => {
+            if (backupManager) {
+                try {
+                    await backupManager.manualBackup();
+                    alert('手动备份已启动');
+                    await updateDashboard();
+                } catch (error) {
+                    alert('备份失败: ' + error.message);
+                }
+            } else {
+                alert('备份管理器未初始化');
+            }
+        });
+        
+        document.getElementById('export-data-btn').addEventListener('click', async () => {
+            if (backupManager) {
+                try {
+                    await backupManager.exportBackup();
+                    alert('数据导出完成');
+                } catch (error) {
+                    alert('导出失败: ' + error.message);
+                }
+            } else {
+                alert('备份管理器未初始化');
+            }
+        });
+        
+        document.getElementById('sync-data-btn').addEventListener('click', async () => {
+            if (storageManager) {
+                try {
+                    await storageManager.syncToCloud();
+                    alert('数据同步完成');
+                    await updateDashboard();
+                } catch (error) {
+                    alert('同步失败: ' + error.message);
+                }
+            } else {
+                alert('存储管理器未初始化');
+            }
+        });
+        
+        document.getElementById('refresh-status-btn').addEventListener('click', async () => {
+            await updateDashboard();
+        });
+        
+        // 监听网络状态变化
+        window.addEventListener('online', updateDashboard);
+        window.addEventListener('offline', updateDashboard);
+        
+        // 初始化仪表板
+        initDashboard();
+    </script>
+</body>
+</html>
