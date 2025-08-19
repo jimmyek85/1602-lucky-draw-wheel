@@ -256,6 +256,7 @@
     <script src="supabase-config.js"></script>
     <script src="supabase-connection.js"></script>
     <script src="offline-storage-manager.js"></script>
+    <script src="data-sync-manager.js"></script>
     <script src="github-backup-manager.js"></script>
     <script src="ai-features.js"></script>
     <script src="fix-connection.js"></script>
@@ -626,13 +627,22 @@
             currentUser.drawchances = newChances;
             currentUser.prizeswon = updatedPrizes;
 
-            // 使用新的离线存储管理器更新用户数据
+            // 使用数据同步管理器同步抽奖记录
             try {
-                if (window.offlineStorageManager) {
-                    await window.offlineStorageManager.updateUserData(currentUser.phone, {
-                        drawchances: newChances,
-                        prizeswon: updatedPrizes
-                    });
+                if (window.dataSyncManager) {
+                    const drawRecord = {
+                        userPhone: currentUser.phone,
+                        prize: prize.text,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    const syncResult = await window.dataSyncManager.syncDrawRecord(drawRecord);
+                    
+                    if (syncResult.success) {
+                        console.log('✅ 抽奖记录已同步');
+                    } else {
+                        console.warn('⚠️ 抽奖记录同步失败，已添加到队列:', syncResult.error);
+                    }
                     
                     // 记录抽奖活动以便备份
                     if (window.githubBackupManager) {
@@ -775,12 +785,17 @@
                     prizeswon: []
                 };
 
-                // 使用离线存储管理器保存用户数据
-                const savedUser = await window.offlineStorageManager.saveUserData(newUser);
+                // 使用数据同步管理器保存用户数据
+                const syncResult = await window.dataSyncManager.syncUserData(newUser);
                 
-                if (savedUser) {
-                    alert(langData[currentLang]["Registration successful!"]);
-                    setupUserSession(savedUser);
+                if (syncResult.success) {
+                    if (syncResult.offline) {
+                        alert(langData[currentLang]["Registration successful!"] + " (离线模式，数据将在网络恢复时同步)");
+                    } else {
+                        alert(langData[currentLang]["Registration successful!"]);
+                    }
+                    
+                    setupUserSession(newUser);
                     
                     // 记录文件变更以便备份
                     if (window.githubBackupManager) {
@@ -791,7 +806,7 @@
                         });
                     }
                 } else {
-                    throw new Error('Failed to save user data');
+                    throw new Error('Failed to save user data: ' + syncResult.error);
                 }
             } catch (error) {
                 console.error("注册过程中发生错误:", error);
@@ -1015,7 +1030,13 @@
                     btn.addEventListener('click', () => handleBeerRecommendation(btn.dataset.flavor));
                 });
 
-                // 初始化新的存储管理器
+                // 初始化数据同步管理器
+                if (window.dataSyncManager) {
+                    await window.dataSyncManager.init();
+                    console.log('✅ 数据同步管理器初始化成功');
+                }
+                
+                // 初始化离线存储管理器（作为备用）
                 if (window.OfflineStorageManager) {
                     window.offlineStorageManager = new window.OfflineStorageManager();
                     await window.offlineStorageManager.init();

@@ -319,11 +319,11 @@
             <div class="error-info">
                 <h3>❌ 检测到的错误</h3>
                 <p><strong>错误类型:</strong> net::ERR_ABORTED</p>
-                <p><strong>请求URL:</strong> https://ibirsieaeozhsvleegri.supabase.co/rest/v1/users?select=count</p>
+                <p><strong>请求URL:</strong> https://rlwuwjegxgtsdshnhyrr.supabase.co/rest/v1/users?select=count</p>
                 <p><strong>错误描述:</strong> 网络请求被中止，通常由于权限、CORS或配置问题导致</p>
                 
                 <div class="error-details">
-net::ERR_ABORTED https://ibirsieaeozhsvleegri.supabase.co/rest/v1/users?select=count
+net::ERR_ABORTED https://rlwuwjegxgtsdshnhyrr.supabase.co/rest/v1/users?select=count
 at https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2:6:121011
 at https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2:6:121431
 at o (https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2:6:120579)
@@ -516,9 +516,9 @@ at o (https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2:6:120579)
                     throw new Error('无效的API密钥格式');
                 }
                 
-                // 检查URL是否匹配错误中的URL
-                if (SUPABASE_URL !== 'https://ibirsieaeozhsvleegri.supabase.co') {
-                    addLog('⚠️ 配置的URL与错误中的URL不匹配', 'warning');
+                // 检查URL是否匹配当前配置的URL
+                if (SUPABASE_URL !== 'https://rlwuwjegxgtsdshnhyrr.supabase.co') {
+                    addLog('⚠️ 配置的URL与当前配置不匹配', 'warning');
                 }
                 
                 updateCheckStatus(1, 'success', '配置格式正确');

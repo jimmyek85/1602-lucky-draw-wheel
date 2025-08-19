@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据同步测试</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8">🔄 数据同步管理器测试</h1>
+        
+        <!-- 连接状态 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">📡 连接状态</h2>
+            <div id="connection-status" class="space-y-2">
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-gray-400" id="network-indicator"></span>
+                    <span id="network-status">检查中...</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-gray-400" id="supabase-indicator"></span>
+                    <span id="supabase-status">检查中...</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-gray-400" id="sync-indicator"></span>
+                    <span id="sync-status">检查中...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 同步状态 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">📊 同步状态</h2>
+            <div id="sync-info" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="text-center">
+                    <div id="pending-count" class="text-2xl font-bold text-blue-600">0</div>
+                    <div class="text-sm text-gray-600">待同步项目</div>
+                </div>
+                <div class="text-center">
+                    <div id="last-sync" class="text-2xl font-bold text-green-600">-</div>
+                    <div class="text-sm text-gray-600">最后同步</div>
+                </div>
+                <div class="text-center">
+                    <div id="sync-progress" class="text-2xl font-bold text-yellow-600">否</div>
+                    <div class="text-sm text-gray-600">同步进行中</div>
+                </div>
+                <div class="text-center">
+                    <div id="online-status" class="text-2xl font-bold text-purple-600">-</div>
+                    <div class="text-sm text-gray-600">在线状态</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 测试操作 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">🧪 测试操作</h2>
+            <div class="space-y-4">
+                <div class="flex flex-wrap gap-4">
+                    <button id="test-user-sync" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        测试用户数据同步
+                    </button>
+                    <button id="test-draw-sync" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        测试抽奖记录同步
+                    </button>
+                    <button id="force-sync" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                        强制同步
+                    </button>
+                    <button id="clear-queue" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                        清空同步队列
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 日志输出 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">📝 操作日志</h2>
+            <div id="log-output" class="bg-gray-50 p-4 rounded h-64 overflow-y-auto font-mono text-sm">
+                <div class="text-gray-500">等待操作...</div>
+            </div>
+            <button id="clear-log" class="mt-2 bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">
+                清空日志
+            </button>
+        </div>
+    </div>
+    
+    <!-- 引入必要的脚本 -->
+    <script src="config.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="data-sync-manager.js"></script>
+    
+    <script>
+        // 日志函数
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('log-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: 'text-blue-600',
+                success: 'text-green-600',
+                warning: 'text-yellow-600',
+                error: 'text-red-600'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = colors[type] || 'text-gray-600';
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+        
+        // 更新状态指示器
+        function updateIndicator(id, status, text) {
+            const indicator = document.getElementById(id);
+            const colors = {
+                success: 'bg-green-500',
+                warning: 'bg-yellow-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+            
+            indicator.className = `w-3 h-3 rounded-full ${colors[status] || 'bg-gray-400'}`;
+            document.getElementById(id.replace('-indicator', '-status')).textContent = text;
+        }
+        
+        // 更新同步状态
+        function updateSyncStatus() {
+            if (window.dataSyncManager) {
+                const status = window.dataSyncManager.getSyncStatus();
+                
+                document.getElementById('pending-count').textContent = status.pendingItems;
+                document.getElementById('last-sync').textContent = status.lastSyncTime ? 
+                    new Date(status.lastSyncTime).toLocaleTimeString() : '-';
+                document.getElementById('sync-progress').textContent = status.syncInProgress ? '是' : '否';
+                document.getElementById('online-status').textContent = status.isOnline ? '在线' : '离线';
+                
+                updateIndicator('sync-indicator', 
+                    status.isOnline ? 'success' : 'warning', 
+                    `数据同步管理器 (${status.pendingItems} 待同步)`);
+            }
+        }
+        
+        // 初始化
+        async function init() {
+            log('🚀 开始初始化数据同步测试...', 'info');
+            
+            // 检查网络状态
+            updateIndicator('network-indicator', 
+                navigator.onLine ? 'success' : 'error', 
+                navigator.onLine ? '网络已连接' : '网络断开');
+            
+            // 检查Supabase配置
+            if (typeof SUPABASE_CONFIG !== 'undefined' && SUPABASE_CONFIG.url) {
+                updateIndicator('supabase-indicator', 'info', 'Supabase配置已加载');
+                log('✅ Supabase配置已加载', 'success');
+            } else {
+                updateIndicator('supabase-indicator', 'error', 'Supabase配置缺失');
+                log('❌ Supabase配置缺失', 'error');
+            }
+            
+            // 初始化数据同步管理器
+            if (window.dataSyncManager) {
+                try {
+                    await window.dataSyncManager.init();
+                    log('✅ 数据同步管理器初始化成功', 'success');
+                    updateSyncStatus();
+                } catch (error) {
+                    log(`❌ 数据同步管理器初始化失败: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ 数据同步管理器未加载', 'error');
+            }
+            
+            // 设置定时更新
+            setInterval(updateSyncStatus, 2000);
+        }
+        
+        // 测试用户数据同步
+        async function testUserSync() {
+            log('🧪 开始测试用户数据同步...', 'info');
+            
+            const testUser = {
+                name: '测试用户' + Date.now(),
+                phone: '1' + Math.floor(Math.random() * 10000000000),
+                email: 'test@example.com',
+                address: '测试地址',
+                drawchances: 3,
+                joindate: new Date().toISOString(),
+                prizeswon: []
+            };
+            
+            try {
+                const result = await window.dataSyncManager.syncUserData(testUser);
+                if (result.success) {
+                    log(`✅ 用户数据同步成功 ${result.offline ? '(离线模式)' : '(在线模式)'}`, 'success');
+                } else {
+                    log(`❌ 用户数据同步失败: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 用户数据同步异常: ${error.message}`, 'error');
+            }
+            
+            updateSyncStatus();
+        }
+        
+        // 测试抽奖记录同步
+        async function testDrawSync() {
+            log('🧪 开始测试抽奖记录同步...', 'info');
+            
+            const testDraw = {
+                userPhone: '1234567890',
+                prize: '测试奖品',
+                timestamp: new Date().toISOString()
+            };
+            
+            try {
+                const result = await window.dataSyncManager.syncDrawRecord(testDraw);
+                if (result.success) {
+                    log(`✅ 抽奖记录同步成功 ${result.offline ? '(离线模式)' : '(在线模式)'}`, 'success');
+                } else {
+                    log(`❌ 抽奖记录同步失败: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 抽奖记录同步异常: ${error.message}`, 'error');
+            }
+            
+            updateSyncStatus();
+        }
+        
+        // 强制同步
+        async function forceSync() {
+            log('🔄 开始强制同步...', 'info');
+            
+            try {
+                await window.dataSyncManager.forcSync();
+                log('✅ 强制同步完成', 'success');
+            } catch (error) {
+                log(`❌ 强制同步失败: ${error.message}`, 'error');
+            }
+            
+            updateSyncStatus();
+        }
+        
+        // 清空同步队列
+        function clearQueue() {
+            log('🗑️ 清空同步队列...', 'warning');
+            
+            if (window.dataSyncManager) {
+                window.dataSyncManager.clearSyncQueue();
+                log('✅ 同步队列已清空', 'success');
+            }
+            
+            updateSyncStatus();
+        }
+        
+        // 清空日志
+        function clearLog() {
+            document.getElementById('log-output').innerHTML = '<div class="text-gray-500">日志已清空...</div>';
+        }
+        
+        // 事件监听器
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('test-user-sync').addEventListener('click', testUserSync);
+            document.getElementById('test-draw-sync').addEventListener('click', testDrawSync);
+            document.getElementById('force-sync').addEventListener('click', forceSync);
+            document.getElementById('clear-queue').addEventListener('click', clearQueue);
+            document.getElementById('clear-log').addEventListener('click', clearLog);
+            
+            // 网络状态监听
+            window.addEventListener('online', () => {
+                updateIndicator('network-indicator', 'success', '网络已连接');
+                log('🌐 网络连接已恢复', 'success');
+            });
+            
+            window.addEventListener('offline', () => {
+                updateIndicator('network-indicator', 'error', '网络断开');
+                log('📱 网络连接已断开', 'warning');
+            });
+            
+            // 初始化
+            init();
+        });
+    </script>
+</body>
+</html>

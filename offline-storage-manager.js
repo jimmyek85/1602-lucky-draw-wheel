@@ -125,6 +125,11 @@ class OfflineStorageManager {
         }
     }
 
+    // 保存用户数据的别名函数（为了兼容index.html的调用）
+    async saveUserData(userData) {
+        return await this.saveUser(userData);
+    }
+
     // 保存抽奖记录
     async saveDrawRecord(drawData) {
         try {

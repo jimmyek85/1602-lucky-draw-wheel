@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>完整系统测试</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-4xl font-bold text-center mb-8">🎯 幸运抽奖系统完整测试</h1>
+        
+        <!-- 系统状态总览 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4 text-blue-600">🔗 连接状态</h3>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span>网络:</span>
+                        <span id="network-status" class="font-semibold">检查中...</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Supabase:</span>
+                        <span id="supabase-status" class="font-semibold">检查中...</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>数据同步:</span>
+                        <span id="sync-status" class="font-semibold">检查中...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4 text-green-600">📊 数据统计</h3>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span>注册用户:</span>
+                        <span id="user-count" class="font-semibold">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>抽奖记录:</span>
+                        <span id="draw-count" class="font-semibold">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>待同步:</span>
+                        <span id="pending-sync" class="font-semibold">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4 text-purple-600">⚡ 快速操作</h3>
+                <div class="space-y-2">
+                    <button id="refresh-data" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+                        刷新数据
+                    </button>
+                    <button id="force-sync" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">
+                        强制同步
+                    </button>
+                    <button id="clear-all" class="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600">
+                        清空测试数据
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 测试操作区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 用户注册测试 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-semibold mb-6 text-blue-600">👤 用户注册测试</h2>
+                
+                <form id="test-registration-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">姓名</label>
+                        <input type="text" id="test-name" class="w-full border rounded-lg px-3 py-2" 
+                               placeholder="输入测试用户姓名" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                        <input type="tel" id="test-phone" class="w-full border rounded-lg px-3 py-2" 
+                               placeholder="输入手机号" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+                        <input type="email" id="test-email" class="w-full border rounded-lg px-3 py-2" 
+                               placeholder="输入邮箱地址" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">地址</label>
+                        <input type="text" id="test-address" class="w-full border rounded-lg px-3 py-2" 
+                               placeholder="输入地址" required>
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        <button type="submit" class="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+                            注册用户
+                        </button>
+                        <button type="button" id="generate-random-user" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            随机生成
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="registration-result" class="mt-4 p-3 rounded hidden"></div>
+            </div>
+            
+            <!-- 抽奖测试 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-semibold mb-6 text-green-600">🎲 抽奖功能测试</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">选择用户</label>
+                        <select id="user-select" class="w-full border rounded-lg px-3 py-2" aria-label="选择用户" title="选择用户"></select>
+                            <option value="">请先注册用户</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">奖品设置</label>
+                        <select id="prize-select" class="w-full border rounded-lg px-3 py-2" aria-label="选择奖品" title="选择奖品"></select>
+                            <option value="一等奖 - iPhone 15">一等奖 - iPhone 15</option>
+                            <option value="二等奖 - iPad">二等奖 - iPad</option>
+                            <option value="三等奖 - AirPods">三等奖 - AirPods</option>
+                            <option value="参与奖 - 优惠券">参与奖 - 优惠券</option>
+                            <option value="谢谢参与">谢谢参与</option>
+                        </select>
+                    </div>
+                    
+                    <button id="simulate-draw" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">
+                        模拟抽奖
+                    </button>
+                    
+                    <div class="bg-gray-50 p-3 rounded">
+                        <h4 class="font-semibold mb-2">当前用户信息:</h4>
+                        <div id="current-user-info" class="text-sm text-gray-600">
+                            请选择用户
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="draw-result" class="mt-4 p-3 rounded hidden"></div>
+            </div>
+        </div>
+        
+        <!-- 数据展示区域 -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold mb-6 text-purple-600">📋 数据展示</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 用户列表 -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">注册用户列表</h3>
+                    <div id="users-list" class="space-y-2 max-h-64 overflow-y-auto">
+                        <div class="text-gray-500 text-center py-4">暂无用户数据</div>
+                    </div>
+                </div>
+                
+                <!-- 抽奖记录 -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">抽奖记录</h3>
+                    <div id="draws-list" class="space-y-2 max-h-64 overflow-y-auto">
+                        <div class="text-gray-500 text-center py-4">暂无抽奖记录</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 操作日志 -->
+        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-gray-600">📝 操作日志</h2>
+                <button id="clear-log" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    清空日志
+                </button>
+            </div>
+            <div id="log-output" class="bg-gray-50 p-4 rounded h-48 overflow-y-auto font-mono text-sm">
+                <div class="text-gray-500">系统初始化中...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 引入必要的脚本 -->
+    <script src="config.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-connection.js"></script>
+    <script src="data-sync-manager.js"></script>
+    
+    <script>
+        // 全局变量
+        let users = [];
+        let drawRecords = [];
+        let currentSelectedUser = null;
+        
+        // 日志函数
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('log-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: 'text-blue-600',
+                success: 'text-green-600',
+                warning: 'text-yellow-600',
+                error: 'text-red-600'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = colors[type] || 'text-gray-600';
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+        
+        // 更新状态显示
+        function updateStatus() {
+            // 网络状态
+            document.getElementById('network-status').textContent = navigator.onLine ? '已连接' : '离线';
+            document.getElementById('network-status').className = navigator.onLine ? 'font-semibold text-green-600' : 'font-semibold text-red-600';
+            
+            // Supabase状态
+            const supabaseStatus = window.supabase ? '已连接' : '未连接';
+            document.getElementById('supabase-status').textContent = supabaseStatus;
+            document.getElementById('supabase-status').className = window.supabase ? 'font-semibold text-green-600' : 'font-semibold text-red-600';
+            
+            // 数据同步状态
+            if (window.dataSyncManager) {
+                const syncStatus = window.dataSyncManager.getSyncStatus();
+                document.getElementById('sync-status').textContent = syncStatus.isOnline ? '正常' : '离线';
+                document.getElementById('sync-status').className = syncStatus.isOnline ? 'font-semibold text-green-600' : 'font-semibold text-yellow-600';
+                document.getElementById('pending-sync').textContent = syncStatus.pendingItems;
+            }
+            
+            // 数据统计
+            document.getElementById('user-count').textContent = users.length;
+            document.getElementById('draw-count').textContent = drawRecords.length;
+        }
+        
+        // 生成随机用户数据
+        function generateRandomUser() {
+            const names = ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十'];
+            const domains = ['gmail.com', 'qq.com', '163.com', 'hotmail.com'];
+            const cities = ['北京', '上海', '广州', '深圳', '杭州', '南京', '成都', '武汉'];
+            
+            const randomName = names[Math.floor(Math.random() * names.length)];
+            const randomPhone = '1' + Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+            const randomEmail = `user${Date.now()}@${domains[Math.floor(Math.random() * domains.length)]}`;
+            const randomAddress = cities[Math.floor(Math.random() * cities.length)] + '市测试地址' + Math.floor(Math.random() * 999);
+            
+            document.getElementById('test-name').value = randomName;
+            document.getElementById('test-phone').value = randomPhone;
+            document.getElementById('test-email').value = randomEmail;
+            document.getElementById('test-address').value = randomAddress;
+        }
+        
+        // 处理用户注册
+        async function handleTestRegistration(event) {
+            event.preventDefault();
+            
+            const userData = {
+                name: document.getElementById('test-name').value,
+                phone: document.getElementById('test-phone').value,
+                email: document.getElementById('test-email').value,
+                address: document.getElementById('test-address').value,
+                drawchances: 3,
+                joindate: new Date().toISOString(),
+                prizeswon: []
+            };
+            
+            log(`🔄 开始注册用户: ${userData.name}`, 'info');
+            
+            try {
+                const result = await window.dataSyncManager.syncUserData(userData);
+                
+                if (result.success) {
+                    users.push(userData);
+                    updateUserSelect();
+                    updateUsersDisplay();
+                    
+                    const resultDiv = document.getElementById('registration-result');
+                    resultDiv.className = 'mt-4 p-3 rounded bg-green-100 text-green-800';
+                    resultDiv.textContent = `✅ 用户注册成功！${result.offline ? ' (离线模式)' : ''}`;
+                    resultDiv.classList.remove('hidden');
+                    
+                    log(`✅ 用户注册成功: ${userData.name} ${result.offline ? '(离线模式)' : '(在线模式)'}`, 'success');
+                    
+                    // 清空表单
+                    document.getElementById('test-registration-form').reset();
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                const resultDiv = document.getElementById('registration-result');
+                resultDiv.className = 'mt-4 p-3 rounded bg-red-100 text-red-800';
+                resultDiv.textContent = `❌ 注册失败: ${error.message}`;
+                resultDiv.classList.remove('hidden');
+                
+                log(`❌ 用户注册失败: ${error.message}`, 'error');
+            }
+            
+            updateStatus();
+        }
+        
+        // 更新用户选择下拉框
+        function updateUserSelect() {
+            const select = document.getElementById('user-select');
+            select.innerHTML = '<option value="">选择用户进行抽奖</option>';
+            
+            users.forEach((user, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${user.name} (${user.phone}) - 剩余${user.drawchances}次`;
+                select.appendChild(option);
+            });
+        }
+        
+        // 处理用户选择
+        function handleUserSelect() {
+            const select = document.getElementById('user-select');
+            const selectedIndex = select.value;
+            
+            if (selectedIndex !== '') {
+                currentSelectedUser = users[selectedIndex];
+                updateCurrentUserInfo();
+            } else {
+                currentSelectedUser = null;
+                document.getElementById('current-user-info').textContent = '请选择用户';
+            }
+        }
+        
+        // 更新当前用户信息显示
+        function updateCurrentUserInfo() {
+            if (!currentSelectedUser) return;
+            
+            const info = `
+                姓名: ${currentSelectedUser.name}<br>
+                手机: ${currentSelectedUser.phone}<br>
+                邮箱: ${currentSelectedUser.email}<br>
+                剩余抽奖次数: ${currentSelectedUser.drawchances}<br>
+                已获奖品: ${currentSelectedUser.prizeswon.length > 0 ? currentSelectedUser.prizeswon.map(p => p.prize).join(', ') : '无'}
+            `;
+            
+            document.getElementById('current-user-info').innerHTML = info;
+        }
+        
+        // 模拟抽奖
+        async function simulateDraw() {
+            if (!currentSelectedUser) {
+                alert('请先选择用户');
+                return;
+            }
+            
+            if (currentSelectedUser.drawchances <= 0) {
+                alert('该用户已无剩余抽奖次数');
+                return;
+            }
+            
+            const selectedPrize = document.getElementById('prize-select').value;
+            
+            const drawData = {
+                userPhone: currentSelectedUser.phone,
+                prize: selectedPrize,
+                timestamp: new Date().toISOString()
+            };
+            
+            log(`🎲 开始模拟抽奖: ${currentSelectedUser.name} -> ${selectedPrize}`, 'info');
+            
+            try {
+                const result = await window.dataSyncManager.syncDrawRecord(drawData);
+                
+                if (result.success) {
+                    // 更新本地用户数据
+                    currentSelectedUser.drawchances -= 1;
+                    if (selectedPrize !== '谢谢参与') {
+                        currentSelectedUser.prizeswon.push({
+                            prize: selectedPrize,
+                            timestamp: drawData.timestamp
+                        });
+                    }
+                    
+                    // 更新记录
+                    drawRecords.push(drawData);
+                    
+                    // 更新显示
+                    updateUserSelect();
+                    updateCurrentUserInfo();
+                    updateUsersDisplay();
+                    updateDrawsDisplay();
+                    
+                    const resultDiv = document.getElementById('draw-result');
+                    resultDiv.className = 'mt-4 p-3 rounded bg-green-100 text-green-800';
+                    resultDiv.textContent = `🎉 抽奖成功！获得: ${selectedPrize} ${result.offline ? '(离线模式)' : ''}`;
+                    resultDiv.classList.remove('hidden');
+                    
+                    log(`🎉 抽奖成功: ${currentSelectedUser.name} 获得 ${selectedPrize} ${result.offline ? '(离线模式)' : '(在线模式)'}`, 'success');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                const resultDiv = document.getElementById('draw-result');
+                resultDiv.className = 'mt-4 p-3 rounded bg-red-100 text-red-800';
+                resultDiv.textContent = `❌ 抽奖失败: ${error.message}`;
+                resultDiv.classList.remove('hidden');
+                
+                log(`❌ 抽奖失败: ${error.message}`, 'error');
+            }
+            
+            updateStatus();
+        }
+        
+        // 更新用户列表显示
+        function updateUsersDisplay() {
+            const container = document.getElementById('users-list');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<div class="text-gray-500 text-center py-4">暂无用户数据</div>';
+                return;
+            }
+            
+            container.innerHTML = users.map(user => `
+                <div class="border rounded p-3 bg-gray-50">
+                    <div class="font-semibold">${user.name}</div>
+                    <div class="text-sm text-gray-600">
+                        📱 ${user.phone} | ✉️ ${user.email}<br>
+                        🎯 剩余${user.drawchances}次 | 🏆 ${user.prizeswon.length}个奖品
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 更新抽奖记录显示
+        function updateDrawsDisplay() {
+            const container = document.getElementById('draws-list');
+            
+            if (drawRecords.length === 0) {
+                container.innerHTML = '<div class="text-gray-500 text-center py-4">暂无抽奖记录</div>';
+                return;
+            }
+            
+            container.innerHTML = drawRecords.slice(-10).reverse().map(record => {
+                const user = users.find(u => u.phone === record.userPhone);
+                return `
+                    <div class="border rounded p-3 bg-gray-50">
+                        <div class="font-semibold">${user ? user.name : record.userPhone}</div>
+                        <div class="text-sm text-gray-600">
+                            🎁 ${record.prize}<br>
+                            ⏰ ${new Date(record.timestamp).toLocaleString()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 刷新数据
+        async function refreshData() {
+            log('🔄 刷新数据...', 'info');
+            updateStatus();
+            log('✅ 数据已刷新', 'success');
+        }
+        
+        // 强制同步
+        async function forceSync() {
+            log('🔄 开始强制同步...', 'info');
+            
+            try {
+                await window.dataSyncManager.forcSync();
+                log('✅ 强制同步完成', 'success');
+            } catch (error) {
+                log(`❌ 强制同步失败: ${error.message}`, 'error');
+            }
+            
+            updateStatus();
+        }
+        
+        // 清空测试数据
+        function clearAllData() {
+            if (confirm('确定要清空所有测试数据吗？此操作不可恢复！')) {
+                users = [];
+                drawRecords = [];
+                currentSelectedUser = null;
+                
+                updateUserSelect();
+                updateUsersDisplay();
+                updateDrawsDisplay();
+                updateStatus();
+                
+                document.getElementById('current-user-info').textContent = '请选择用户';
+                
+                // 清空同步队列
+                if (window.dataSyncManager) {
+                    window.dataSyncManager.clearSyncQueue();
+                }
+                
+                log('🗑️ 所有测试数据已清空', 'warning');
+            }
+        }
+        
+        // 清空日志
+        function clearLog() {
+            document.getElementById('log-output').innerHTML = '<div class="text-gray-500">日志已清空...</div>';
+        }
+        
+        // 初始化
+        async function init() {
+            log('🚀 系统初始化开始...', 'info');
+            
+            // 等待数据同步管理器初始化
+            if (window.dataSyncManager) {
+                try {
+                    await window.dataSyncManager.init();
+                    log('✅ 数据同步管理器初始化成功', 'success');
+                } catch (error) {
+                    log(`❌ 数据同步管理器初始化失败: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ 数据同步管理器未加载', 'error');
+            }
+            
+            updateStatus();
+            
+            // 设置定时更新
+            setInterval(updateStatus, 3000);
+            
+            log('✅ 系统初始化完成', 'success');
+        }
+        
+        // 事件监听器
+        document.addEventListener('DOMContentLoaded', () => {
+            // 表单事件
+            document.getElementById('test-registration-form').addEventListener('submit', handleTestRegistration);
+            document.getElementById('generate-random-user').addEventListener('click', generateRandomUser);
+            document.getElementById('user-select').addEventListener('change', handleUserSelect);
+            document.getElementById('simulate-draw').addEventListener('click', simulateDraw);
+            
+            // 操作按钮
+            document.getElementById('refresh-data').addEventListener('click', refreshData);
+            document.getElementById('force-sync').addEventListener('click', forceSync);
+            document.getElementById('clear-all').addEventListener('click', clearAllData);
+            document.getElementById('clear-log').addEventListener('click', clearLog);
+            
+            // 网络状态监听
+            window.addEventListener('online', () => {
+                log('🌐 网络连接已恢复', 'success');
+                updateStatus();
+            });
+            
+            window.addEventListener('offline', () => {
+                log('📱 网络连接已断开', 'warning');
+                updateStatus();
+            });
+            
+            // 初始化
+            init();
+        });
+    </script>
+</body>
+</html>

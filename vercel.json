@@ -17,6 +17,22 @@
       "dest": "/admin.html"
     },
     {
+      "src": "/admin.html",
+      "dest": "/admin.html"
+    },
+    {
+      "src": "/deployment-verification",
+      "dest": "/deployment-verification.html"
+    },
+    {
+      "src": "/frontend-backend-connection-test",
+      "dest": "/frontend-backend-connection-test.html"
+    },
+    {
+      "src": "/reconnect-supabase",
+      "dest": "/reconnect-supabase.html"
+    },
+    {
       "src": "/test",
       "dest": "/simple-connection-test.html"
     },

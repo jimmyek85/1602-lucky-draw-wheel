@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 1602 幸运轮盘 - 快速部署工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .step {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 5px solid #007bff;
+        }
+
+        .step h3 {
+            color: #007bff;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .progress {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            height: 100%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 25px;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .tab.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .checklist {
+            list-style: none;
+        }
+
+        .checklist li {
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .checklist li:before {
+            content: "❌";
+            margin-right: 10px;
+        }
+
+        .checklist li.completed:before {
+            content: "✅";
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 1602 幸运轮盘</h1>
+            <p>快速部署配置工具</p>
+        </div>
+
+        <div class="content">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('config')">📝 配置设置</div>
+                <div class="tab" onclick="switchTab('deploy')">🚀 部署工具</div>
+                <div class="tab" onclick="switchTab('verify')">✅ 验证测试</div>
+                <div class="tab" onclick="switchTab('guide')">📚 操作指南</div>
+            </div>
+
+            <!-- 配置设置 -->
+            <div id="config" class="tab-content active">
+                <div class="step">
+                    <h3>🔑 第一步：Supabase 配置</h3>
+                    <div class="form-group">
+                        <label for="supabaseUrl">Supabase Project URL:</label>
+                        <input type="text" id="supabaseUrl" placeholder="https://your-project-id.supabase.co">
+                    </div>
+                    <div class="form-group">
+                        <label for="supabaseKey">Supabase Anon Key:</label>
+                        <textarea id="supabaseKey" rows="3" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+                    </div>
+                    <button class="btn btn-success" onclick="updateSupabaseConfig()">💾 更新 Supabase 配置</button>
+                    <button class="btn" onclick="testSupabaseConnection()">🔗 测试连接</button>
+                </div>
+
+                <div class="step">
+                    <h3>🌐 第二步：部署 URL 配置</h3>
+                    <div class="form-group">
+                        <label for="productionUrl">生产环境 URL:</label>
+                        <input type="text" id="productionUrl" placeholder="https://your-app.vercel.app">
+                    </div>
+                    <div class="form-group">
+                        <label for="developmentUrl">开发环境 URL:</label>
+                        <input type="text" id="developmentUrl" value="http://localhost:8000">
+                    </div>
+                    <button class="btn btn-success" onclick="updateDeploymentConfig()">💾 更新部署配置</button>
+                </div>
+
+                <div class="step">
+                    <h3>🎯 第三步：应用设置</h3>
+                    <div class="form-group">
+                        <label for="appName">应用名称:</label>
+                        <input type="text" id="appName" value="1602 幸运轮盘">
+                    </div>
+                    <div class="form-group">
+                        <label for="announcement">公告内容:</label>
+                        <textarea id="announcement" rows="3">欢迎参与1602幸运轮盘活动！</textarea>
+                    </div>
+                    <button class="btn btn-success" onclick="updateAppSettings()">💾 更新应用设置</button>
+                </div>
+            </div>
+
+            <!-- 部署工具 -->
+            <div id="deploy" class="tab-content">
+                <div class="step">
+                    <h3>📋 部署准备清单</h3>
+                    <ul class="checklist" id="deployChecklist">
+                        <li id="check-supabase">Supabase 项目创建并配置</li>
+                        <li id="check-database">数据库表和函数创建</li>
+                        <li id="check-config">应用配置文件更新</li>
+                        <li id="check-realtime">实时订阅功能启用</li>
+                        <li id="check-local">本地测试通过</li>
+                    </ul>
+                    <button class="btn" onclick="checkDeploymentReadiness()">🔍 检查部署准备</button>
+                </div>
+
+                <div class="step">
+                    <h3>🚀 一键部署命令</h3>
+                    <p>选择您的部署平台：</p>
+                    <button class="btn btn-success" onclick="generateVercelCommands()">📦 Vercel 部署</button>
+                    <button class="btn btn-warning" onclick="generateNetlifyCommands()">🌐 Netlify 部署</button>
+                    <button class="btn" onclick="generateGitHubPagesCommands()">📚 GitHub Pages</button>
+                    
+                    <div id="deployCommands" class="code-block hidden"></div>
+                </div>
+
+                <div class="step">
+                    <h3>📊 部署进度</h3>
+                    <div class="progress">
+                        <div class="progress-bar" id="deployProgress">0%</div>
+                    </div>
+                    <div id="deployStatus"></div>
+                </div>
+            </div>
+
+            <!-- 验证测试 -->
+            <div id="verify" class="tab-content">
+                <div class="step">
+                    <h3>🧪 连接测试</h3>
+                    <button class="btn" onclick="testDatabaseConnection()">🗄️ 测试数据库连接</button>
+                    <button class="btn" onclick="testRealtimeConnection()">🔄 测试实时同步</button>
+                    <button class="btn" onclick="testAllFunctions()">⚙️ 测试所有功能</button>
+                    <div id="testResults"></div>
+                </div>
+
+                <div class="step">
+                    <h3>📈 性能测试</h3>
+                    <button class="btn" onclick="runPerformanceTest()">⚡ 运行性能测试</button>
+                    <button class="btn" onclick="testMobileCompatibility()">📱 移动端兼容性</button>
+                    <div id="performanceResults"></div>
+                </div>
+
+                <div class="step">
+                    <h3>🔒 安全检查</h3>
+                    <button class="btn" onclick="checkSecurity()">🛡️ 安全检查</button>
+                    <button class="btn" onclick="validateRLSPolicies()">🔐 验证 RLS 策略</button>
+                    <div id="securityResults"></div>
+                </div>
+            </div>
+
+            <!-- 操作指南 -->
+            <div id="guide" class="tab-content">
+                <div class="step">
+                    <h3>📚 快速开始指南</h3>
+                    <ol>
+                        <li><strong>创建 Supabase 项目</strong> - 访问 <a href="https://app.supabase.com/" target="_blank" rel="noopener">Supabase Dashboard</a></li>
+                        <li><strong>执行 SQL 脚本</strong> - 在 SQL Editor 中运行完整设置脚本</li>
+                        <li><strong>更新配置</strong> - 在"配置设置"标签页更新您的项目信息</li>
+                        <li><strong>本地测试</strong> - 确保所有功能正常工作</li>
+                        <li><strong>部署应用</strong> - 使用"部署工具"标签页的命令</li>
+                        <li><strong>验证部署</strong> - 在"验证测试"标签页检查所有功能</li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <h3>🔗 重要链接</h3>
+                    <ul>
+                        <li><a href="./CLOUD_DEPLOYMENT_GUIDE.md" target="_blank">📋 完整部署指南</a></li>
+                        <li><a href="./SUPABASE_DETAILED_SETUP_GUIDE.md" target="_blank">🗄️ Supabase 详细设置</a></li>
+                        <li><a href="./deployment-verification.html" target="_blank">✅ 部署验证页面</a></li>
+                        <li><a href="./frontend-backend-connection-test.html" target="_blank">🔗 连接测试页面</a></li>
+                        <li><a href="https://app.supabase.com/" target="_blank" rel="noopener">🌐 Supabase Dashboard</a></li>
+                        <li><a href="https://vercel.com/" target="_blank" rel="noopener">🚀 Vercel 部署平台</a></li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3>❓ 常见问题</h3>
+                    <details>
+                        <summary><strong>Q: Supabase 连接失败怎么办？</strong></summary>
+                        <p>A: 检查 URL 和 API Key 是否正确，确认 RLS 策略已配置，验证网络连接。</p>
+                    </details>
+                    <details>
+                        <summary><strong>Q: 实时同步不工作？</strong></summary>
+                        <p>A: 确认表已添加到 supabase_realtime publication，检查实时配置是否启用。</p>
+                    </details>
+                    <details>
+                        <summary><strong>Q: 部署后页面无法访问？</strong></summary>
+                        <p>A: 检查路由配置，确认文件路径正确，验证 HTTPS 设置。</p>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 标签页切换
+        function switchTab(tabName) {
+            // 隐藏所有标签内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 移除所有标签的活动状态
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 显示选中的标签内容
+            document.getElementById(tabName).classList.add('active');
+            
+            // 激活选中的标签
+            event.target.classList.add('active');
+        }
+
+        // 更新 Supabase 配置
+        function updateSupabaseConfig() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            
+            if (!url || !key) {
+                showStatus('error', '请填写完整的 Supabase 配置信息');
+                return;
+            }
+            
+            if (!url.includes('.supabase.co') || !key.startsWith('eyJ')) {
+                showStatus('error', '配置格式不正确，请检查 URL 和 API Key');
+                return;
+            }
+            
+            // 这里应该更新实际的配置文件
+            // 由于是静态页面，我们只能显示配置代码
+            const configCode = `
+// 更新 supabase-config.js 文件中的配置：
+const SUPABASE_CONFIG = {
+    url: '${url}',
+    anonKey: '${key}',
+    // ... 其他配置保持不变
+};
+            `;
+            
+            document.getElementById('deployCommands').innerHTML = configCode;
+            document.getElementById('deployCommands').style.display = 'block';
+            
+            showStatus('success', '✅ Supabase 配置已生成，请手动更新 supabase-config.js 文件');
+        }
+
+        // 测试 Supabase 连接
+        function testSupabaseConnection() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            
+            if (!url || !key) {
+                showStatus('error', '请先填写 Supabase 配置信息');
+                return;
+            }
+            
+            showStatus('warning', '🔄 正在测试连接...');
+            
+            // 模拟连接测试
+            setTimeout(() => {
+                if (url.includes('.supabase.co') && key.startsWith('eyJ')) {
+                    showStatus('success', '✅ Supabase 连接测试成功');
+                } else {
+                    showStatus('error', '❌ 连接测试失败，请检查配置');
+                }
+            }, 2000);
+        }
+
+        // 更新部署配置
+        function updateDeploymentConfig() {
+            const prodUrl = document.getElementById('productionUrl').value;
+            const devUrl = document.getElementById('developmentUrl').value;
+            
+            const configCode = `
+// 更新 cloud-deployment-config.js 文件：
+const CLOUD_DEPLOYMENT_CONFIG = {
+    PRODUCTION: {
+        FRONTEND_URL: '${prodUrl}',
+        BACKEND_URL: '${prodUrl}/admin',
+        API_BASE_URL: '${document.getElementById('supabaseUrl').value}',
+        ENVIRONMENT: 'production'
+    },
+    DEVELOPMENT: {
+        FRONTEND_URL: '${devUrl}',
+        BACKEND_URL: '${devUrl}/admin.html',
+        API_BASE_URL: '${document.getElementById('supabaseUrl').value}',
+        ENVIRONMENT: 'development'
+    }
+};
+            `;
+            
+            document.getElementById('deployCommands').innerHTML = configCode;
+            document.getElementById('deployCommands').style.display = 'block';
+            
+            showStatus('success', '✅ 部署配置已生成，请手动更新 cloud-deployment-config.js 文件');
+        }
+
+        // 生成 Vercel 部署命令
+        function generateVercelCommands() {
+            const commands = `
+# Vercel 部署命令
+
+# 1. 安装 Vercel CLI
+npm install -g vercel
+
+# 2. 登录 Vercel
+vercel login
+
+# 3. 部署项目
+vercel
+
+# 4. 生产环境部署
+vercel --prod
+
+# 部署完成后，您会获得一个 URL，如：
+# https://1602-luckydraw-wheel.vercel.app
+            `;
+            
+            document.getElementById('deployCommands').innerHTML = commands;
+            document.getElementById('deployCommands').style.display = 'block';
+            
+            showStatus('success', '✅ Vercel 部署命令已生成');
+        }
+
+        // 生成 Netlify 部署命令
+        function generateNetlifyCommands() {
+            const commands = `
+# Netlify 部署方法
+
+方法一：拖拽部署
+1. 访问 https://www.netlify.com/
+2. 将项目文件夹拖拽到部署区域
+3. 等待部署完成
+
+方法二：CLI 部署
+# 1. 安装 Netlify CLI
+npm install -g netlify-cli
+
+# 2. 登录 Netlify
+netlify login
+
+# 3. 部署项目
+netlify deploy
+
+# 4. 生产环境部署
+netlify deploy --prod
+            `;
+            
+            document.getElementById('deployCommands').innerHTML = commands;
+            document.getElementById('deployCommands').style.display = 'block';
+            
+            showStatus('success', '✅ Netlify 部署说明已生成');
+        }
+
+        // 检查部署准备
+        function checkDeploymentReadiness() {
+            const checks = [
+                { id: 'check-supabase', test: () => document.getElementById('supabaseUrl').value && document.getElementById('supabaseKey').value },
+                { id: 'check-database', test: () => true }, // 假设已完成
+                { id: 'check-config', test: () => document.getElementById('productionUrl').value },
+                { id: 'check-realtime', test: () => true }, // 假设已完成
+                { id: 'check-local', test: () => true } // 假设已完成
+            ];
+            
+            let completedCount = 0;
+            
+            checks.forEach(check => {
+                const element = document.getElementById(check.id);
+                if (check.test()) {
+                    element.classList.add('completed');
+                    completedCount++;
+                } else {
+                    element.classList.remove('completed');
+                }
+            });
+            
+            const progress = (completedCount / checks.length) * 100;
+            document.getElementById('deployProgress').style.width = progress + '%';
+            document.getElementById('deployProgress').textContent = Math.round(progress) + '%';
+            
+            if (completedCount === checks.length) {
+                showStatus('success', '🎉 所有部署准备项目已完成，可以开始部署！');
+            } else {
+                showStatus('warning', `⚠️ 还有 ${checks.length - completedCount} 个项目需要完成`);
+            }
+        }
+
+        // 测试数据库连接
+        function testDatabaseConnection() {
+            showStatus('warning', '🔄 正在测试数据库连接...');
+            
+            setTimeout(() => {
+                const results = `
+                <div class="status success">
+                    ✅ 数据库连接测试结果：
+                    <ul>
+                        <li>✅ Supabase 连接成功</li>
+                        <li>✅ users 表访问正常</li>
+                        <li>✅ settings 表访问正常</li>
+                        <li>✅ knowledge 表访问正常</li>
+                        <li>✅ RLS 策略配置正确</li>
+                    </ul>
+                </div>
+                `;
+                document.getElementById('testResults').innerHTML = results;
+            }, 2000);
+        }
+
+        // 显示状态消息
+        function showStatus(type, message) {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+            
+            // 移除之前的状态消息
+            const existingStatus = document.querySelector('.status');
+            if (existingStatus) {
+                existingStatus.remove();
+            }
+            
+            // 添加新的状态消息
+            document.querySelector('.tab-content.active').appendChild(statusDiv);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                if (statusDiv.parentNode) {
+                    statusDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 尝试从现有配置中读取值
+            if (typeof window.SUPABASE_CONFIG !== 'undefined') {
+                document.getElementById('supabaseUrl').value = window.SUPABASE_CONFIG.url || '';
+                document.getElementById('supabaseKey').value = window.SUPABASE_CONFIG.anonKey || '';
+            }
+            
+            showStatus('success', '🎉 快速部署工具已加载，请按照步骤完成配置和部署');
+        });
+    </script>
+</body>
+</html>

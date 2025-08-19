@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase连接修复测试</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8">🔧 Supabase连接修复测试</h1>
+        
+        <!-- 配置信息显示 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">📋 当前配置信息</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Supabase URL:</label>
+                    <div id="current-url" class="mt-1 p-2 bg-gray-50 rounded text-sm font-mono">加载中...</div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">API Key (前20字符):</label>
+                    <div id="current-key" class="mt-1 p-2 bg-gray-50 rounded text-sm font-mono">加载中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 连接测试结果 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">🔍 连接测试结果</h2>
+            <div class="space-y-4">
+                <div class="flex items-center space-x-3">
+                    <div id="config-status" class="w-4 h-4 rounded-full bg-gray-400"></div>
+                    <span id="config-text">配置检查中...</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div id="dns-status" class="w-4 h-4 rounded-full bg-gray-400"></div>
+                    <span id="dns-text">DNS解析检查中...</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div id="connection-status" class="w-4 h-4 rounded-full bg-gray-400"></div>
+                    <span id="connection-text">连接测试中...</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div id="auth-status" class="w-4 h-4 rounded-full bg-gray-400"></div>
+                    <span id="auth-text">认证测试中...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 操作按钮 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">⚡ 测试操作</h2>
+            <div class="flex flex-wrap gap-4">
+                <button id="test-connection" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    重新测试连接
+                </button>
+                <button id="test-query" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    测试数据查询
+                </button>
+                <button id="test-insert" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                    测试数据插入
+                </button>
+                <button id="clear-cache" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                    清除缓存
+                </button>
+            </div>
+        </div>
+        
+        <!-- 详细日志 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">📝 详细日志</h2>
+                <button id="clear-log" class="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">
+                    清空日志
+                </button>
+            </div>
+            <div id="log-output" class="bg-gray-50 p-4 rounded h-64 overflow-y-auto font-mono text-sm">
+                <div class="text-gray-500">初始化中...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 引入必要的脚本 -->
+    <script src="config.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        // 日志函数
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('log-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: 'text-blue-600',
+                success: 'text-green-600',
+                warning: 'text-yellow-600',
+                error: 'text-red-600'
+            };
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = colors[type] || 'text-gray-600';
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+        
+        // 更新状态指示器
+        function updateStatus(elementId, status, text) {
+            const indicator = document.getElementById(elementId);
+            const textElement = document.getElementById(elementId.replace('-status', '-text'));
+            
+            const colors = {
+                success: 'bg-green-500',
+                warning: 'bg-yellow-500',
+                error: 'bg-red-500',
+                loading: 'bg-blue-500'
+            };
+            
+            indicator.className = `w-4 h-4 rounded-full ${colors[status] || 'bg-gray-400'}`;
+            textElement.textContent = text;
+        }
+        
+        // 显示配置信息
+        function displayConfig() {
+            if (typeof SUPABASE_CONFIG !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+                document.getElementById('current-url').textContent = SUPABASE_CONFIG.url;
+                document.getElementById('current-key').textContent = SUPABASE_CONFIG.anonKey.substring(0, 20) + '...';
+                log('✅ 配置信息已加载', 'success');
+            } else {
+                document.getElementById('current-url').textContent = '配置未找到或不完整';
+                document.getElementById('current-key').textContent = '配置未找到或不完整';
+                log('❌ 配置信息未找到或不完整', 'error');
+            }
+        }
+        
+        // 检查配置
+        async function checkConfig() {
+            updateStatus('config-status', 'loading', '检查配置中...');
+            
+            try {
+                if (typeof SUPABASE_CONFIG === 'undefined') {
+                    throw new Error('SUPABASE_CONFIG未定义，请检查supabase-config.js是否正确加载');
+                }
+                
+                if (!SUPABASE_CONFIG || !SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
+                    throw new Error('配置信息缺失');
+                }
+                
+                if (!SUPABASE_CONFIG.url.includes('supabase.co')) {
+                    throw new Error('URL格式不正确');
+                }
+                
+                if (!SUPABASE_CONFIG.anonKey.startsWith('eyJ')) {
+                    throw new Error('API Key格式不正确');
+                }
+                
+                updateStatus('config-status', 'success', '配置检查通过');
+                log('✅ 配置检查通过', 'success');
+                return true;
+            } catch (error) {
+                updateStatus('config-status', 'error', `配置错误: ${error.message}`);
+                log(`❌ 配置检查失败: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // DNS解析测试
+        async function checkDNS() {
+            updateStatus('dns-status', 'loading', 'DNS解析测试中...');
+            
+            try {
+                const url = new URL(SUPABASE_CONFIG.url);
+                const hostname = url.hostname;
+                
+                // 尝试解析域名
+                const response = await fetch(`https://dns.google/resolve?name=${hostname}&type=A`, {
+                    method: 'GET'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('DNS查询失败');
+                }
+                
+                const data = await response.json();
+                
+                if (data.Status === 0 && data.Answer && data.Answer.length > 0) {
+                    updateStatus('dns-status', 'success', 'DNS解析正常');
+                    log(`✅ DNS解析成功: ${hostname} -> ${data.Answer[0].data}`, 'success');
+                    return true;
+                } else {
+                    throw new Error('域名无法解析');
+                }
+            } catch (error) {
+                updateStatus('dns-status', 'error', `DNS解析失败: ${error.message}`);
+                log(`❌ DNS解析失败: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // 连接测试
+        async function testConnection() {
+            updateStatus('connection-status', 'loading', '连接测试中...');
+            
+            try {
+                // 创建Supabase客户端
+                const supabase = window.supabase.createClient(
+                    SUPABASE_CONFIG.url,
+                    SUPABASE_CONFIG.anonKey
+                );
+                
+                // 测试基本连接
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                updateStatus('connection-status', 'success', '连接测试成功');
+                log('✅ Supabase连接测试成功', 'success');
+                
+                // 保存客户端实例
+                window.testSupabase = supabase;
+                return true;
+            } catch (error) {
+                updateStatus('connection-status', 'error', `连接失败: ${error.message}`);
+                log(`❌ 连接测试失败: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // 认证测试
+        async function testAuth() {
+            updateStatus('auth-status', 'loading', '认证测试中...');
+            
+            try {
+                if (!window.testSupabase) {
+                    throw new Error('连接未建立');
+                }
+                
+                // 测试匿名访问权限
+                const { data, error } = await window.testSupabase.auth.getSession();
+                
+                if (error && error.message !== 'No session found') {
+                    throw error;
+                }
+                
+                updateStatus('auth-status', 'success', '认证测试通过');
+                log('✅ 认证测试通过', 'success');
+                return true;
+            } catch (error) {
+                updateStatus('auth-status', 'error', `认证失败: ${error.message}`);
+                log(`❌ 认证测试失败: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // 测试数据查询
+        async function testQuery() {
+            log('🔍 开始测试数据查询...', 'info');
+            
+            try {
+                if (!window.testSupabase) {
+                    throw new Error('请先测试连接');
+                }
+                
+                const { data, error, count } = await window.testSupabase
+                    .from('users')
+                    .select('*', { count: 'exact' })
+                    .limit(5);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                log(`✅ 查询成功，共 ${count || 0} 条记录，返回 ${data.length} 条`, 'success');
+                
+                if (data.length > 0) {
+                    log(`📄 示例数据: ${JSON.stringify(data[0], null, 2)}`, 'info');
+                }
+            } catch (error) {
+                log(`❌ 查询失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 测试数据插入
+        async function testInsert() {
+            log('📝 开始测试数据插入...', 'info');
+            
+            try {
+                if (!window.testSupabase) {
+                    throw new Error('请先测试连接');
+                }
+                
+                const testUser = {
+                    name: '测试用户_' + Date.now(),
+                    phone: '1' + Math.floor(Math.random() * 10000000000),
+                    email: 'test@example.com',
+                    address: '测试地址',
+                    drawchances: 3,
+                    joindate: new Date().toISOString(),
+                    prizeswon: []
+                };
+                
+                const { data, error } = await window.testSupabase
+                    .from('users')
+                    .insert([testUser])
+                    .select()
+                    .single();
+                
+                if (error) {
+                    throw error;
+                }
+                
+                log(`✅ 插入成功: ${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                log(`❌ 插入失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 清除缓存
+        function clearCache() {
+            log('🗑️ 清除浏览器缓存...', 'info');
+            
+            // 清除localStorage
+            localStorage.clear();
+            
+            // 清除sessionStorage
+            sessionStorage.clear();
+            
+            log('✅ 缓存已清除', 'success');
+        }
+        
+        // 清空日志
+        function clearLog() {
+            document.getElementById('log-output').innerHTML = '<div class="text-gray-500">日志已清空...</div>';
+        }
+        
+        // 完整测试流程
+        async function runFullTest() {
+            log('🚀 开始完整连接测试...', 'info');
+            
+            const configOk = await checkConfig();
+            if (!configOk) return;
+            
+            const dnsOk = await checkDNS();
+            if (!dnsOk) return;
+            
+            const connectionOk = await testConnection();
+            if (!connectionOk) return;
+            
+            await testAuth();
+            
+            log('🎉 所有测试完成！', 'success');
+        }
+        
+        // 初始化
+        function init() {
+            log('🔧 Supabase连接修复测试初始化...', 'info');
+            
+            displayConfig();
+            
+            // 延迟执行测试，确保所有脚本加载完成
+            setTimeout(runFullTest, 1000);
+        }
+        
+        // 事件监听器
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('test-connection').addEventListener('click', runFullTest);
+            document.getElementById('test-query').addEventListener('click', testQuery);
+            document.getElementById('test-insert').addEventListener('click', testInsert);
+            document.getElementById('clear-cache').addEventListener('click', clearCache);
+            document.getElementById('clear-log').addEventListener('click', clearLog);
+            
+            init();
+        });
+    </script>
+</body>
+</html>
